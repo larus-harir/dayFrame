@@ -1,0 +1,143 @@
+import 'dart:convert';
+import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'bible_data.dart';
+import 'format.dart';
+import 'models.dart';
+
+class PlannerStore extends ChangeNotifier {
+  PlannerStore(this._prefs);
+  static const _storageKey = 'dayframe_data_v1';
+  final SharedPreferencesAsync _prefs;
+  Future<void> _lastSave = Future<void>.value();
+
+  List<TaskItem> tasks = [];
+  List<PlannerEvent> events = [];
+  List<PlannerNote> notes = [];
+  List<GoalItem> goals = [];
+  Map<String,String> bibleReadDates = {};
+  Map<String,String> bibleNotes = {};
+  DisplayPreferences display = DisplayPreferences();
+  int biblePage = 0;
+
+  Future<void> load() async {
+    final raw = await _prefs.getString(_storageKey);
+    if (raw == null) {
+      _seedDemo();
+      _changed();
+      return;
+    }
+    try {
+      final data = jsonDecode(raw) as Map<String,dynamic>;
+      tasks = (data['tasks'] as List? ?? []).map((v) => TaskItem.fromJson(Map<String,dynamic>.from(v as Map))).toList();
+      events = (data['events'] as List? ?? []).map((v) => PlannerEvent.fromJson(Map<String,dynamic>.from(v as Map))).toList();
+      notes = (data['notes'] as List? ?? []).map((v) => PlannerNote.fromJson(Map<String,dynamic>.from(v as Map))).toList();
+      goals = (data['goals'] as List? ?? []).map((v) => GoalItem.fromJson(Map<String,dynamic>.from(v as Map))).toList();
+      bibleReadDates = (data['bibleReadDates'] as Map? ?? {}).map((key,value) => MapEntry(key.toString(), value.toString()));
+      bibleNotes = (data['bibleNotes'] as Map? ?? {}).map((key,value) => MapEntry(key.toString(), value.toString()));
+      display = DisplayPreferences.fromJson(Map<String,dynamic>.from(data['display'] as Map? ?? {}));
+      biblePage = ((data['biblePage'] as num?)?.toInt() ?? 0).clamp(0, 1188).toInt();
+      notifyListeners();
+    } catch (error) {
+      debugPrint('저장 데이터 읽기 실패: $error');
+      rethrow; // 손상된 저장 데이터를 덮어쓰지 않도록 중단
+    }
+  }
+
+  void _seedDemo() {
+    final now = DateTime.now();
+    final today = dayKey(now);
+    tasks = [
+      TaskItem(id:generateId(),title:'성경 1장 읽기'),
+      TaskItem(id:'demo-study',title:'자격증 공부 30분',days:[1,2,3,4,5,6]),
+      TaskItem(id:'demo-exercise',title:'운동하기',days:[1,3,5]),
+    ];
+    events = [PlannerEvent(id:'demo-event',title:'일정 등록 예시 (수정하거나 삭제하세요)',date:today,hour:19,minute:0)];
+    notes = [PlannerNote(id:'demo-note',text:'여기에 생각나는 일을 자유롭게 기록해보세요.',createdAt:now.toIso8601String())];
+    goals = [
+      GoalItem(id:'demo-goal1',title:'자격증 공부 계획',description:'시험 준비 단계를 나누어 관리하기',steps:['학습 순서 정리','기본 이론 공부','기출문제 풀이'],finishedSteps:[true,false,false]),
+      GoalItem(id:'demo-goal2',title:'개인 앱 개발',description:'Flutter 프로젝트 만들기',steps:['기본 UI','로컬 저장','잠금화면 연동 검토'],finishedSteps:[true,true,false]),
+    ];
+  }
+
+  Map<String,dynamic> _serialize() => {
+    'tasks':tasks.map((x) => x.toJson()).toList(), 'events':events.map((x) => x.toJson()).toList(),
+    'notes':notes.map((x) => x.toJson()).toList(), 'goals':goals.map((x) => x.toJson()).toList(),
+    'bibleReadDates':bibleReadDates, 'bibleNotes':bibleNotes,'biblePage':biblePage,'display':display.toJson(),
+  };
+
+  void _changed() {
+    notifyListeners();
+    final content = jsonEncode(_serialize());
+    _lastSave = _lastSave.catchError((Object e) { debugPrint('이전 저장 실패: $e'); })
+        .then((_) => _prefs.setString(_storageKey, content));
+    _lastSave.catchError((Object e) { debugPrint('저장 실패: $e'); });
+  }
+
+  List<TaskItem> tasksOn(DateTime date) => tasks.where((x) => x.isScheduled(date)).toList();
+  List<PlannerEvent> eventsOn(DateTime date) =>
+      events.where((x) => x.date == dayKey(date)).toList()..sort((a,b) => (a.hour * 60 + a.minute).compareTo(b.hour * 60 + b.minute));
+  List<PlannerNote> get sortedNotes => [...notes]..sort((a,b) {
+    if (a.pinned != b.pinned) return a.pinned ? -1 : 1;
+    return b.createdAt.compareTo(a.createdAt);
+  });
+  List<GoalItem> get pinnedGoals => goals.where((x) => x.pinned).toList();
+
+  void addTask(String title,List<int> days) { tasks.add(TaskItem(id:generateId(),title:title,days:days)); _changed(); }
+  void editTask(TaskItem task,String title,List<int> days) { task.title=title; task.days=days; _changed(); }
+  void deleteTask(TaskItem task) { tasks.removeWhere((x) => x.id == task.id); _changed(); }
+  void toggleTask(TaskItem task,DateTime date) {
+    final key = dayKey(date);
+    if (task.completedDates.contains(key)) { task.completedDates.remove(key); } else { task.completedDates.add(key); }
+    _changed();
+  }
+
+  void upsertEvent(PlannerEvent event) {
+    final index = events.indexWhere((x) => x.id == event.id);
+    if(index == -1) { events.add(event); } else { events[index] = event; }
+    _changed();
+  }
+  void deleteEvent(PlannerEvent event) { events.removeWhere((x) => x.id == event.id); _changed(); }
+  void toggleEventPin(PlannerEvent event) { event.pinned = !event.pinned; _changed(); }
+
+  void upsertNote(PlannerNote note) {
+    final index = notes.indexWhere((x) => x.id == note.id);
+    if(index == -1) { notes.add(note); } else { notes[index] = note; }
+    _changed();
+  }
+  void deleteNote(PlannerNote note) { notes.removeWhere((x) => x.id == note.id); _changed(); }
+  void toggleNotePin(PlannerNote note) { note.pinned = !note.pinned; _changed(); }
+
+  void upsertGoal(GoalItem goal) {
+    final index = goals.indexWhere((x) => x.id == goal.id);
+    if(index == -1) { goals.add(goal); } else { goals[index] = goal; }
+    _changed();
+  }
+  void deleteGoal(GoalItem goal) { goals.removeWhere((x) => x.id == goal.id); _changed(); }
+  void toggleGoalPin(GoalItem goal) { goal.pinned = !goal.pinned; _changed(); }
+  void toggleStep(GoalItem goal,int step) { goal.finishedSteps[step] = !goal.finishedSteps[step]; _changed(); }
+
+  BibleLocation get selectedChapter => bibleAt(biblePage);
+  bool isBibleRead(BibleLocation chapter) => bibleReadDates.containsKey(chapter.key);
+  int get todayReadCount => bibleReadDates.values.where((v) => v == dayKey(DateTime.now())).length;
+  int get totalReadCount => bibleReadDates.length;
+  int get nextUnreadPage {
+    for (var i=0;i<1189;i++) { if(!bibleReadDates.containsKey(bibleAt(i).key)) return i; }
+    return 1188;
+  }
+  void goToBiblePage(int value) { biblePage = value.clamp(0, 1188).toInt(); _changed(); }
+  void goToNextUnreadBible() { biblePage = nextUnreadPage; _changed(); }
+  void toggleBibleRead() {
+    final key = selectedChapter.key;
+    if (bibleReadDates.containsKey(key)) {
+      bibleReadDates.remove(key);
+    } else {
+      bibleReadDates[key] = dayKey(DateTime.now());
+      if (biblePage < 1188) biblePage++;
+    }
+    _changed();
+  }
+  void saveBibleNote(String value) { bibleNotes[selectedChapter.key] = value; _changed(); }
+
+  void updateDisplay(void Function(DisplayPreferences) change) { change(display); _changed(); }
+}
