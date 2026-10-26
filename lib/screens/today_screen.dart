@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import '../core/bible_data.dart';
 import '../core/format.dart';
 import '../core/store.dart';
 import '../widgets/common.dart';
 import '../widgets/editors.dart';
 import 'bible_screen.dart';
+import '../widgets/verse_card.dart';
 
 class TodayScreen extends StatelessWidget {
   const TodayScreen({super.key,required this.store,required this.openGoals,required this.openCalendar,required this.openNotes,required this.openPreview});
@@ -18,12 +18,11 @@ class TodayScreen extends StatelessWidget {
     final due=store.eventsOn(today);
     final pinnedEvents=due.where((e)=>e.pinned).toList();
     final pinnedNotes=store.sortedNotes.where((e)=>e.pinned).toList();
-    final chapter=bibleVerseAt(store.nextUnreadPage);
     return ListView(padding:const EdgeInsets.fromLTRB(18,14,18,110),children:[
       Row(children:[Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
         Text(formatDateFull(today),style:Theme.of(context).textTheme.bodyMedium?.copyWith(color:Theme.of(context).colorScheme.primary)),
         const SizedBox(height:3),Text('오늘도 하나씩, 천천히.',style:Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight:FontWeight.w800)),
-      ])),IconButton.filledTonal(onPressed:openPreview,tooltip:'잠금화면 프리뷰',icon:const Icon(Icons.phone_android_rounded))]),
+      ])),IconButton.filledTonal(onPressed:openPreview,tooltip:'잠금 플래너 열기 / 설정',icon:const Icon(Icons.phone_android_rounded))]),
       const SizedBox(height:22),
       if(store.display.events) ...[
         SectionHeading('오늘의 일정',subtitle:'오늘 등록된 일정 ${due.length}개',onAdd:()=>editEventDialog(context,store,initialDate:today)),
@@ -42,14 +41,8 @@ class TodayScreen extends StatelessWidget {
       ],
       if(store.display.bible) ...[
         SectionHeading('성경 일독',subtitle:'오늘 ${store.todayReadCount}절 · 전체 ${store.totalReadCount}/31102절'),
-        InkWell(borderRadius:BorderRadius.circular(19),onTap:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>BibleScreen(store:store))),
-          child:Panel(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-            Row(children:[Icon(Icons.menu_book_rounded,color:Theme.of(context).colorScheme.primary,size:26),const SizedBox(width:10),
-              Expanded(child:Text(chapter.reference,style:Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight:FontWeight.bold))),
-              const Icon(Icons.chevron_right_rounded)]),
-            const SizedBox(height:10),Text('다음으로 읽을 절을 확인하고 완료를 체크해보세요.',style:Theme.of(context).textTheme.bodySmall),
-            const SizedBox(height:14),ProgressPill(value:store.totalReadCount/totalBibleVerses),
-          ]))),
+        VerseCard(store:store),
+        TextButton(onPressed:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>BibleScreen(store:store))),child:const Text('성경 전체 기록 / 메모')),
         const SizedBox(height:24),
       ],
       if(store.display.tasks) ...[

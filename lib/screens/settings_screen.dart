@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../core/store.dart';
 import '../core/lock_surface.dart';
 import '../widgets/common.dart';
+import '../widgets/overlay_settings_card.dart';
 import 'preview_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
@@ -27,28 +28,29 @@ class SettingsScreen extends StatelessWidget {
           subtitle:const Text('잠금화면에 표시될 수 있는 개인 내용을 숨기는 설정입니다.'),
           value:pref.hidePrivateDetails,onChanged:(v)=>store.updateDisplay((p)=>p.hidePrivateDetails=v)),
       ])),
-      const SizedBox(height:22),const SectionHeading('잠금화면 미리보기'),
+      const SizedBox(height:22),const OverlaySettingsCard(),
+      const SizedBox(height:22),const SectionHeading('요약 프리뷰 (보조 기능)'),
       Panel(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
         const Text('현재는 잠금화면처럼 보이는 앱 내부 테스트 화면입니다. 휴대폰을 켤 때마다 자동 실행되지는 않습니다.'),
         const SizedBox(height:14),SizedBox(width:double.infinity,child:FilledButton.icon(
           onPressed:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>PreviewScreen(store:store))),
           icon:const Icon(Icons.phone_android),label:const Text('프리뷰 실행'))),
       ])),
-      const SizedBox(height:22),const SectionHeading('Android 잠금 요약 · 실험 기능'),
+      const SizedBox(height:22),const SectionHeading('수동 요약 타일 (읽기 전용)'),
       Panel(child:Column(children:[
         const Text('빠른 설정 편집에서 DAYFRAME 타일을 추가한 뒤 직접 눌러 여세요. 화면을 켤 때 자동으로 실행하지 않으며 휴대폰 잠금을 해제하지 않습니다. 갤럭시에서 잠금 중 타일 실행은 OS 정책에 따라 제한될 수 있습니다.'),
-        SwitchListTile(contentPadding:EdgeInsets.zero,title:const Text('잠금 요약 사용'),
+        SwitchListTile(contentPadding:EdgeInsets.zero,title:const Text('수동 요약 타일 사용'),
           value:pref.lockSurfaceEnabled,onChanged:!LockSurface.supported?null:(v)async{
             store.updateDisplay((p)=>p.lockSurfaceEnabled=v);
             try { await LockSurface.sync(store); } catch (_) { if(context.mounted)showMessage(context,'Android 연동을 확인해주세요.'); }
           }),
         FilledButton(onPressed:!LockSurface.supported || !pref.lockSurfaceEnabled?null:()async{
           try { await LockSurface.open(store); } catch (_) { if(context.mounted)showMessage(context,'네이티브 연동 또는 기기 지원을 확인해주세요.'); }
-        },child:const Text('네이티브 요약 열기')),
+        },child:const Text('읽기 전용 요약 열기')),
       ])),
       const SizedBox(height:22),const SectionHeading('저장 방식'),
       const Panel(child:Text('일정·메모·체크 기록은 현재 이 기기에만 저장됩니다. 로그인·클라우드 동기화·자동 백업은 아직 없으며 앱 데이터 삭제 시 기록이 사라집니다.')),
-      const SizedBox(height:18),Text('DAYFRAME · MVP 0.2.0',textAlign:TextAlign.center,style:Theme.of(context).textTheme.bodySmall),
+      const SizedBox(height:18),Text('DAYFRAME · MVP 0.3.0',textAlign:TextAlign.center,style:Theme.of(context).textTheme.bodySmall),
     ]);
   }
 }

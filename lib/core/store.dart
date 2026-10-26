@@ -89,11 +89,11 @@ class PlannerStore extends ChangeNotifier {
   };
 
   void _changed() {
-    notifyListeners();
     final content = jsonEncode(_serialize());
     _lastSave = _lastSave.catchError((Object e) { debugPrint('이전 저장 실패: $e'); })
         .then((_) => _prefs.setString(_storageKey, content));
     _lastSave.catchError((Object e) { debugPrint('저장 실패: $e'); });
+    notifyListeners();
   }
 
   List<TaskItem> tasksOn(DateTime date) => tasks.where((x) => x.isScheduled(date)).toList();
@@ -106,9 +106,16 @@ class PlannerStore extends ChangeNotifier {
   List<GoalItem> get pinnedGoals => goals.where((x) => x.pinned).toList();
 
   void addTask(String title,List<int> days) { tasks.add(TaskItem(id:generateId(),title:title,days:days)); _changed(); }
-  void editTask(TaskItem task,String title,List<int> days) { task.title=title; task.days=days; _changed(); }
+  void editTask(TaskItem task,String title,List<int> days) {
+    final index=tasks.indexWhere((item)=>item.id==task.id);
+    if(index<0)return;
+    tasks[index].title=title;tasks[index].days=days;_changed();
+  }
   void deleteTask(TaskItem task) { tasks.removeWhere((x) => x.id == task.id); _changed(); }
   void toggleTask(TaskItem task,DateTime date) {
+    final index=tasks.indexWhere((item)=>item.id==task.id);
+    if(index<0)return;
+    task=tasks[index];
     final key = dayKey(date);
     if (task.completedDates.contains(key)) { task.completedDates.remove(key); } else { task.completedDates.add(key); }
     _changed();

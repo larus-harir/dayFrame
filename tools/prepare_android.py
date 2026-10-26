@@ -21,6 +21,13 @@ tree = ET.parse(manifest)
 app = tree.getroot().find('application')
 assert app is not None
 attr = lambda key: f'{{{namespace}}}{key}'
+for permission in ['SYSTEM_ALERT_WINDOW', 'FOREGROUND_SERVICE', 'FOREGROUND_SERVICE_SPECIAL_USE', 'POST_NOTIFICATIONS']:
+    name = 'android.permission.' + permission
+    if not any(x.get(attr('name')) == name for x in tree.getroot().findall('uses-permission')):
+        ET.SubElement(tree.getroot(), 'uses-permission', {attr('name'): name})
+if not any(x.get(attr('name')) == '.LockOverlayService' for x in app.findall('service')):
+    service = ET.SubElement(app, 'service', {attr('name'): '.LockOverlayService', attr('exported'): 'false', attr('foregroundServiceType'): 'specialUse'})
+    ET.SubElement(service, 'property', {attr('name'): 'android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE', attr('value'): 'User-enabled interactive lock planner overlay on screen-on'})
 if not any(x.get(attr('name')) == '.LockSummaryActivity' for x in app.findall('activity')):
     ET.SubElement(app, 'activity', {attr('name'): '.LockSummaryActivity', attr('exported'): 'false',
         attr('excludeFromRecents'): 'true', attr('theme'): '@android:style/Theme.Material.NoActionBar'})

@@ -61,6 +61,18 @@ void main() {
     await other.flush();
     store.dispose();other.dispose();
   });
+  test('task edit survives store refresh after returning from lock screen', () async {
+    final prefs=memoryPreferences();
+    final store=PlannerStore(prefs);
+    store.addTask('before',[1,2,3,4,5,6,7]);await store.flush();
+    final editing=store.tasks.single;
+    await store.load();
+    store.editTask(editing,'after',[1]);
+    store.toggleTask(editing,DateTime(2026,10,26));await store.flush();
+    expect(store.tasks.single.title,'after');
+    expect(store.tasks.single.isDone(DateTime(2026,10,26)),isTrue);
+    store.dispose();
+  });
   test('privacy hides personal content in every section', () {
     final store = PlannerStore(memoryPreferences());
     final date = DateTime(2026,10,26);

@@ -3,10 +3,10 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'core/store.dart';
 import 'core/lock_surface.dart';
+export 'lock_overlay.dart' show lockOverlayMain;
 import 'screens/calendar_screen.dart';
 import 'screens/goals_screen.dart';
 import 'screens/notes_screen.dart';
-import 'screens/preview_screen.dart';
 import 'screens/settings_screen.dart';
 import 'screens/today_screen.dart';
 
@@ -52,16 +52,33 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
   int resumeTick=0;
   @override void initState(){super.initState();WidgetsBinding.instance.addObserver(this);widget.store.addListener(syncLock);syncLock();}
   @override void dispose(){widget.store.removeListener(syncLock);WidgetsBinding.instance.removeObserver(this);super.dispose();}
+  Future<void> reloadAfterLock() async {
+    try {
+      await LockSurface.flushOverlay();
+      await widget.store.flush();
+      await widget.store.load();
+      if(mounted){syncLock();setState(()=>resumeTick++);}
+    } catch(error){debugPrint('잠금 기록 동기화 실패: $error');}
+  }
+  Future<void> openLockPlanner() async {
+    try {
+      if(LockSurface.supported && await LockSurface.overlayRunning()) {
+        await LockSurface.showOverlay();
+      } else if(mounted) {setState(()=>selected=4);}
+    } catch(_) {
+      if(mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('설정에서 잠금 플래너 권한과 실행 상태를 확인해주세요.')));
+    }
+  }
   void syncLock(){LockSurface.sync(widget.store).catchError((Object error){debugPrint('잠금 요약 갱신 실패: $error');});}
   @override void didChangeAppLifecycleState(AppLifecycleState state){
-    if(state==AppLifecycleState.resumed && mounted){syncLock();setState(()=>resumeTick++);}
+    if(state==AppLifecycleState.resumed && mounted){reloadAfterLock();}
   }
   @override Widget build(BuildContext context){
     final store=widget.store;
     final pages=<Widget>[
       TodayScreen(key:ValueKey('today-$resumeTick'),store:store,openGoals:()=>setState(()=>selected=2),
         openCalendar:()=>setState(()=>selected=1),openNotes:()=>setState(()=>selected=3),
-        openPreview:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>PreviewScreen(store:store)))),
+        openPreview:openLockPlanner),
       CalendarScreen(store:store),GoalsScreen(store:store),NotesScreen(store:store),SettingsScreen(store:store),
     ];
     return Scaffold(

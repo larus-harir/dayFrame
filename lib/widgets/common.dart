@@ -22,15 +22,14 @@ class Panel extends StatelessWidget {
   const Panel({super.key,required this.child,this.padding=const EdgeInsets.all(16)});
   final Widget child;
   final EdgeInsets padding;
-  @override Widget build(BuildContext context) => Container(
-    width: double.infinity,
-    padding: padding,
-    decoration: BoxDecoration(
-      color: Theme.of(context).colorScheme.surfaceContainerLow,
+  @override Widget build(BuildContext context) => Material(
+    color: Theme.of(context).colorScheme.surfaceContainerLow,
+    shape: RoundedRectangleBorder(
       borderRadius:BorderRadius.circular(19),
-      border:Border.all(color:Theme.of(context).colorScheme.outlineVariant.withValues(alpha:.45)),
+      side:BorderSide(color:Theme.of(context).colorScheme.outlineVariant.withValues(alpha:.45)),
     ),
-    child:child,
+    clipBehavior:Clip.antiAlias,
+    child:SizedBox(width:double.infinity,child:Padding(padding:padding,child:child)),
   );
 }
 
