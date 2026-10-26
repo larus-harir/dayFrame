@@ -17,6 +17,8 @@ class PlannerStore extends ChangeNotifier {
   List<GoalItem> goals = [];
   Map<String,String> bibleReadDates = {};
   Map<String,String> bibleNotes = {};
+  Map<String,String> legacyBibleNotes = {};
+  Future<void> flush() => _lastSave;
   DisplayPreferences display = DisplayPreferences();
   int biblePage = 0;
 
@@ -29,6 +31,9 @@ class PlannerStore extends ChangeNotifier {
     }
     try {
       final data = jsonDecode(raw) as Map<String,dynamic>;
+      if (((data['schemaVersion'] as num?)?.toInt() ?? 1) > 2) {
+        throw StateError('더 최신 버전의 저장 데이터입니다. 앱을 업데이트하세요.');
+      }
       tasks = (data['tasks'] as List? ?? []).map((v) => TaskItem.fromJson(Map<String,dynamic>.from(v as Map))).toList();
       events = (data['events'] as List? ?? []).map((v) => PlannerEvent.fromJson(Map<String,dynamic>.from(v as Map))).toList();
       notes = (data['notes'] as List? ?? []).map((v) => PlannerNote.fromJson(Map<String,dynamic>.from(v as Map))).toList();
@@ -37,7 +42,23 @@ class PlannerStore extends ChangeNotifier {
       bibleNotes = (data['bibleNotes'] as Map? ?? {}).map((key,value) => MapEntry(key.toString(), value.toString()));
       display = DisplayPreferences.fromJson(Map<String,dynamic>.from(data['display'] as Map? ?? {}));
       biblePage = ((data['biblePage'] as num?)?.toInt() ?? 0).clamp(0, 1188).toInt();
-      notifyListeners();
+      if (data['schemaVersion'] != 2) {
+        // Preserve the original payload before the first schema upgrade.
+        if(await _prefs.getString('dayframe_data_v1_pre_verse_backup') == null) {
+          await _prefs.setString('dayframe_data_v1_pre_verse_backup', raw);
+        }
+        legacyBibleNotes = Map.of(bibleNotes);
+        bibleNotes = {};
+        bibleReadDates = migrateChapterDates(bibleReadDates);
+        final old = bibleAt(biblePage);
+        biblePage = bibleVerseIndex(old.book, old.chapter);
+        _changed();
+        await flush();
+      } else {
+        legacyBibleNotes = (data['legacyBibleNotes'] as Map? ?? {}).map((k,v)=>MapEntry(k.toString(),v.toString()));
+        biblePage = ((data['biblePage'] as num?)?.toInt() ?? 0).clamp(0,totalBibleVerses-1).toInt();
+        notifyListeners();
+      }
     } catch (error) {
       debugPrint('저장 데이터 읽기 실패: $error');
       rethrow; // 손상된 저장 데이터를 덮어쓰지 않도록 중단
@@ -48,7 +69,7 @@ class PlannerStore extends ChangeNotifier {
     final now = DateTime.now();
     final today = dayKey(now);
     tasks = [
-      TaskItem(id:generateId(),title:'성경 1장 읽기'),
+      TaskItem(id:generateId(),title:'성경 1절 읽기'),
       TaskItem(id:'demo-study',title:'자격증 공부 30분',days:[1,2,3,4,5,6]),
       TaskItem(id:'demo-exercise',title:'운동하기',days:[1,3,5]),
     ];
@@ -61,6 +82,7 @@ class PlannerStore extends ChangeNotifier {
   }
 
   Map<String,dynamic> _serialize() => {
+    'schemaVersion':2, 'legacyBibleNotes':legacyBibleNotes,
     'tasks':tasks.map((x) => x.toJson()).toList(), 'events':events.map((x) => x.toJson()).toList(),
     'notes':notes.map((x) => x.toJson()).toList(), 'goals':goals.map((x) => x.toJson()).toList(),
     'bibleReadDates':bibleReadDates, 'bibleNotes':bibleNotes,'biblePage':biblePage,'display':display.toJson(),
@@ -117,27 +139,27 @@ class PlannerStore extends ChangeNotifier {
   void toggleGoalPin(GoalItem goal) { goal.pinned = !goal.pinned; _changed(); }
   void toggleStep(GoalItem goal,int step) { goal.finishedSteps[step] = !goal.finishedSteps[step]; _changed(); }
 
-  BibleLocation get selectedChapter => bibleAt(biblePage);
-  bool isBibleRead(BibleLocation chapter) => bibleReadDates.containsKey(chapter.key);
+  BibleVerse get selectedVerse => bibleVerseAt(biblePage);
+  bool isBibleRead(BibleVerse chapter) => bibleReadDates.containsKey(chapter.key);
   int get todayReadCount => bibleReadDates.values.where((v) => v == dayKey(DateTime.now())).length;
   int get totalReadCount => bibleReadDates.length;
   int get nextUnreadPage {
-    for (var i=0;i<1189;i++) { if(!bibleReadDates.containsKey(bibleAt(i).key)) return i; }
-    return 1188;
+    for (var i=0;i<totalBibleVerses;i++) { if(!bibleReadDates.containsKey(bibleVerseAt(i).key)) return i; }
+    return totalBibleVerses-1;
   }
-  void goToBiblePage(int value) { biblePage = value.clamp(0, 1188).toInt(); _changed(); }
+  void goToBiblePage(int value) { biblePage = value.clamp(0, totalBibleVerses-1).toInt(); _changed(); }
   void goToNextUnreadBible() { biblePage = nextUnreadPage; _changed(); }
   void toggleBibleRead() {
-    final key = selectedChapter.key;
+    final key = selectedVerse.key;
     if (bibleReadDates.containsKey(key)) {
       bibleReadDates.remove(key);
     } else {
       bibleReadDates[key] = dayKey(DateTime.now());
-      if (biblePage < 1188) biblePage++;
+      if (biblePage < totalBibleVerses-1) biblePage++;
     }
     _changed();
   }
-  void saveBibleNote(String value) { bibleNotes[selectedChapter.key] = value; _changed(); }
+  void saveBibleNote(String value) { bibleNotes[selectedVerse.key] = value; _changed(); }
 
   void updateDisplay(void Function(DisplayPreferences) change) { change(display); _changed(); }
 }

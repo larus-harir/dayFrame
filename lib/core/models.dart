@@ -3,7 +3,7 @@ import 'format.dart';
 String generateId() => DateTime.now().microsecondsSinceEpoch.toString();
 
 class TaskItem {
-  TaskItem({required this.id, required this.title, this.days = const [1,2,3,4,5,6,7], this.completedDates = const []});
+  TaskItem({required this.id, required this.title, this.days = const [1,2,3,4,5,6,7], List<String>? completedDates}) : completedDates = List.of(completedDates ?? const []);
   final String id;
   String title;
   List<int> days;
@@ -81,16 +81,18 @@ class GoalItem {
 
 class DisplayPreferences {
   DisplayPreferences();
+
   bool bible = true;
   bool tasks = true;
   bool goals = true;
   bool notes = true;
   bool events = true;
-  bool hidePrivateDetails = false;
+  bool hidePrivateDetails = true;
   bool darkMode = false;
+  bool lockSurfaceEnabled = false;
   Map<String,dynamic> toJson() => {
     'bible':bible,'tasks':tasks,'goals':goals,'notes':notes,'events':events,
-    'hidePrivateDetails':hidePrivateDetails,'darkMode':darkMode,
+    'lockSurfaceEnabled':lockSurfaceEnabled, 'hidePrivateDetails':hidePrivateDetails,'darkMode':darkMode,
   };
   factory DisplayPreferences.fromJson(Map<String,dynamic> json) {
     final value = DisplayPreferences();
@@ -99,7 +101,8 @@ class DisplayPreferences {
     value.goals = json['goals'] != false;
     value.notes = json['notes'] != false;
     value.events = json['events'] != false;
-    value.hidePrivateDetails = json['hidePrivateDetails'] == true;
+    value.hidePrivateDetails = json['hidePrivateDetails'] != false;
+    value.lockSurfaceEnabled = json['lockSurfaceEnabled'] == true;
     value.darkMode = json['darkMode'] == true;
     return value;
   }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../core/store.dart';
+import '../core/lock_surface.dart';
 import '../widgets/common.dart';
 import 'preview_screen.dart';
 
@@ -22,7 +23,7 @@ class SettingsScreen extends StatelessWidget {
       const SizedBox(height:22),const SectionHeading('모양과 개인정보'),
       Panel(child:Column(children:[
         SwitchListTile(contentPadding:EdgeInsets.zero,title:const Text('다크 모드'),value:pref.darkMode,onChanged:(v)=>store.updateDisplay((p)=>p.darkMode=v)),
-        SwitchListTile(contentPadding:EdgeInsets.zero,title:const Text('프리뷰에서 일정·메모 숨기기'),
+        SwitchListTile(contentPadding:EdgeInsets.zero,title:const Text('프리뷰·잠금 요약에서 개인 내용 숨기기'),
           subtitle:const Text('잠금화면에 표시될 수 있는 개인 내용을 숨기는 설정입니다.'),
           value:pref.hidePrivateDetails,onChanged:(v)=>store.updateDisplay((p)=>p.hidePrivateDetails=v)),
       ])),
@@ -33,9 +34,21 @@ class SettingsScreen extends StatelessWidget {
           onPressed:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>PreviewScreen(store:store))),
           icon:const Icon(Icons.phone_android),label:const Text('프리뷰 실행'))),
       ])),
+      const SizedBox(height:22),const SectionHeading('Android 잠금 요약 · 실험 기능'),
+      Panel(child:Column(children:[
+        const Text('빠른 설정 편집에서 DAYFRAME 타일을 추가한 뒤 직접 눌러 여세요. 화면을 켤 때 자동으로 실행하지 않으며 휴대폰 잠금을 해제하지 않습니다. 갤럭시에서 잠금 중 타일 실행은 OS 정책에 따라 제한될 수 있습니다.'),
+        SwitchListTile(contentPadding:EdgeInsets.zero,title:const Text('잠금 요약 사용'),
+          value:pref.lockSurfaceEnabled,onChanged:!LockSurface.supported?null:(v)async{
+            store.updateDisplay((p)=>p.lockSurfaceEnabled=v);
+            try { await LockSurface.sync(store); } catch (_) { if(context.mounted)showMessage(context,'Android 연동을 확인해주세요.'); }
+          }),
+        FilledButton(onPressed:!LockSurface.supported || !pref.lockSurfaceEnabled?null:()async{
+          try { await LockSurface.open(store); } catch (_) { if(context.mounted)showMessage(context,'네이티브 연동 또는 기기 지원을 확인해주세요.'); }
+        },child:const Text('네이티브 요약 열기')),
+      ])),
       const SizedBox(height:22),const SectionHeading('저장 방식'),
       const Panel(child:Text('일정·메모·체크 기록은 현재 이 기기에만 저장됩니다. 로그인·클라우드 동기화·자동 백업은 아직 없으며 앱 데이터 삭제 시 기록이 사라집니다.')),
-      const SizedBox(height:18),Text('DAYFRAME · MVP 0.1.0',textAlign:TextAlign.center,style:Theme.of(context).textTheme.bodySmall),
+      const SizedBox(height:18),Text('DAYFRAME · MVP 0.2.0',textAlign:TextAlign.center,style:Theme.of(context).textTheme.bodySmall),
     ]);
   }
 }

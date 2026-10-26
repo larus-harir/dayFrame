@@ -2,6 +2,20 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:dayframe/core/bible_data.dart';
 
 void main() {
+  test('all 31,102 verses map both ways, including chapter boundaries', () {
+    expect(totalBibleVerses,31102);
+    expect(bibleVerseCounts.length,66);
+    for(var b=0;b<66;b++) { expect(bibleVerseCounts[b].length,bibleChapters[b]); }
+    for(var i=0;i<totalBibleVerses;i++) {
+      final v=bibleVerseAt(i);
+      expect(bibleVerseIndex(v.book,v.chapter,v.verse),i);
+    }
+    expect(bibleVerseAt(0).reference,'창세기 1장 1절');
+    expect(bibleVerseAt(30).reference,'창세기 1장 31절');
+    expect(bibleVerseAt(31).reference,'창세기 2장 1절');
+    expect(bibleVerseAt(totalBibleVerses-1).reference,'요한계시록 22장 21절');
+    expect(()=>bibleVerseIndex(0,1,32),throwsRangeError);
+  });
   test('개신교 성경 66권 총 1189장', () {
     expect(bibleBookNames.length, 66);
     expect(bibleChapters.length, 66);

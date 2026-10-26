@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'core/store.dart';
+import 'core/lock_surface.dart';
 import 'screens/calendar_screen.dart';
 import 'screens/goals_screen.dart';
 import 'screens/notes_screen.dart';
@@ -49,10 +50,11 @@ class MainShell extends StatefulWidget {
 class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
   int selected=0;
   int resumeTick=0;
-  @override void initState(){super.initState();WidgetsBinding.instance.addObserver(this);}
-  @override void dispose(){WidgetsBinding.instance.removeObserver(this);super.dispose();}
+  @override void initState(){super.initState();WidgetsBinding.instance.addObserver(this);widget.store.addListener(syncLock);syncLock();}
+  @override void dispose(){widget.store.removeListener(syncLock);WidgetsBinding.instance.removeObserver(this);super.dispose();}
+  void syncLock(){LockSurface.sync(widget.store).catchError((Object error){debugPrint('잠금 요약 갱신 실패: $error');});}
   @override void didChangeAppLifecycleState(AppLifecycleState state){
-    if(state==AppLifecycleState.resumed && mounted)setState(()=>resumeTick++);
+    if(state==AppLifecycleState.resumed && mounted){syncLock();setState(()=>resumeTick++);}
   }
   @override Widget build(BuildContext context){
     final store=widget.store;

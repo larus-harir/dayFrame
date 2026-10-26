@@ -18,7 +18,7 @@ class TodayScreen extends StatelessWidget {
     final due=store.eventsOn(today);
     final pinnedEvents=due.where((e)=>e.pinned).toList();
     final pinnedNotes=store.sortedNotes.where((e)=>e.pinned).toList();
-    final chapter=bibleAt(store.nextUnreadPage);
+    final chapter=bibleVerseAt(store.nextUnreadPage);
     return ListView(padding:const EdgeInsets.fromLTRB(18,14,18,110),children:[
       Row(children:[Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
         Text(formatDateFull(today),style:Theme.of(context).textTheme.bodyMedium?.copyWith(color:Theme.of(context).colorScheme.primary)),
@@ -41,14 +41,14 @@ class TodayScreen extends StatelessWidget {
         const SizedBox(height:24),
       ],
       if(store.display.bible) ...[
-        SectionHeading('성경 일독',subtitle:'오늘 ${store.todayReadCount}장 · 전체 ${store.totalReadCount}/1189장'),
+        SectionHeading('성경 일독',subtitle:'오늘 ${store.todayReadCount}절 · 전체 ${store.totalReadCount}/31102절'),
         InkWell(borderRadius:BorderRadius.circular(19),onTap:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>BibleScreen(store:store))),
           child:Panel(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
             Row(children:[Icon(Icons.menu_book_rounded,color:Theme.of(context).colorScheme.primary,size:26),const SizedBox(width:10),
               Expanded(child:Text(chapter.reference,style:Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight:FontWeight.bold))),
               const Icon(Icons.chevron_right_rounded)]),
-            const SizedBox(height:10),Text('다음으로 읽을 장을 확인하고 완료를 체크해보세요.',style:Theme.of(context).textTheme.bodySmall),
-            const SizedBox(height:14),ProgressPill(value:store.totalReadCount/1189),
+            const SizedBox(height:10),Text('다음으로 읽을 절을 확인하고 완료를 체크해보세요.',style:Theme.of(context).textTheme.bodySmall),
+            const SizedBox(height:14),ProgressPill(value:store.totalReadCount/totalBibleVerses),
           ]))),
         const SizedBox(height:24),
       ],

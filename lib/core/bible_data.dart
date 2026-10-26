@@ -1,3 +1,6 @@
+import 'verse_counts.dart';
+export 'verse_counts.dart';
+
 /// 개신교 성경 66권의 장 수. 본문은 저작권/라이선스 때문에 포함하지 않음.
 const bibleBookNames = <String>[
   '창세기','출애굽기','레위기','민수기','신명기','여호수아','사사기','룻기','사무엘상','사무엘하',
@@ -36,4 +39,42 @@ int bibleIndex(int book, int chapter) {
   var result = 0;
   for (var i = 0; i < book; i++) { result += bibleChapters[i]; }
   return result + chapter - 1;
+}
+
+final totalBibleVerses = bibleVerseCounts.expand((v) => v).fold<int>(0, (a,b) => a+b);
+class BibleVerse {
+  const BibleVerse(this.book, this.chapter, this.verse, this.index);
+  final int book, chapter, verse, index;
+  String get reference => '${bibleBookNames[book]} $chapter장 $verse절';
+  String get key => '$book:$chapter:$verse';
+}
+// Precompute once so looking for the next unread verse stays linear in verses,
+// rather than multiplying by the number of chapters.
+final _verses = <BibleVerse>[
+  for(var b=0, index=0;b<bibleVerseCounts.length;b++)
+    for(var c=0;c<bibleVerseCounts[b].length;c++)
+      for(var v=1;v<=bibleVerseCounts[b][c];v++) BibleVerse(b,c+1,v,index++),
+];
+BibleVerse bibleVerseAt(int index) => _verses[index.clamp(0,totalBibleVerses-1).toInt()];
+int bibleVerseIndex(int book, int chapter, [int verse=1]) {
+  RangeError.checkValidIndex(book, bibleVerseCounts, 'book');
+  RangeError.checkValueInInterval(chapter, 1, bibleVerseCounts[book].length, 'chapter');
+  RangeError.checkValueInInterval(verse, 1, bibleVerseCounts[book][chapter-1], 'verse');
+  var index=verse-1;
+  for(var b=0;b<book;b++) { for(final count in bibleVerseCounts[b]) { index+=count; } }
+  for(var c=0;c<chapter-1;c++) { index+=bibleVerseCounts[book][c]; }
+  return index;
+}
+
+/// Expand legacy chapter completion to its verses, retaining the recorded date.
+Map<String,String> migrateChapterDates(Map<String,String> chapters) {
+  final result=<String,String>{};
+  for(final entry in chapters.entries) {
+    final parts=entry.key.split(':');
+    if(parts.length!=2) continue;
+    final b=int.tryParse(parts[0]), c=int.tryParse(parts[1]);
+    if(b==null || c==null || b<0 || b>=66 || c<1 || c>bibleChapters[b]) continue;
+    for(var v=1;v<=bibleVerseCounts[b][c-1];v++) { result['$b:$c:$v']=entry.value; }
+  }
+  return result;
 }

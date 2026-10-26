@@ -6,8 +6,8 @@ import 'common.dart';
 
 Future<void> editTaskDialog(BuildContext context,PlannerStore store,{TaskItem? task}) async {
   final controller = TextEditingController(text:task?.title ?? '');
-  final days = <int>{...?(task?.days ?? [1,2,3,4,5,6,7])};
-  await showDialog<void>(context:context,builder:(ctx) => StatefulBuilder(builder:(ctx,setDialogState) => AlertDialog(
+  final days = <int>{...(task?.days ?? [1,2,3,4,5,6,7])};
+  await showDialog<void>(context:context,builder:(ctx) => _ControllerOwner(controllers:[controller],child:StatefulBuilder(builder:(ctx,setDialogState) => AlertDialog(
     title:Text(task==null?'체크리스트 추가':'체크리스트 수정'),
     content:SingleChildScrollView(child:Column(mainAxisSize:MainAxisSize.min,crossAxisAlignment:CrossAxisAlignment.start,children:[
       TextField(controller:controller,autofocus:true,decoration:inputStyle('할 일',hint:'예: 자격증 공부 30분')),
@@ -27,8 +27,8 @@ Future<void> editTaskDialog(BuildContext context,PlannerStore store,{TaskItem? t
         else {store.editTask(task,controller.text.trim(),days.toList()..sort());}
         Navigator.pop(ctx);
       },child:const Text('저장'))],
-  )));
-  controller.dispose();
+  ))));
+
 }
 
 Future<void> editEventDialog(BuildContext context,PlannerStore store,{PlannerEvent? event,DateTime? initialDate}) async {
@@ -37,17 +37,17 @@ Future<void> editEventDialog(BuildContext context,PlannerStore store,{PlannerEve
   var date = event!=null?parseDate(event.date):(initialDate ?? DateTime.now());
   var time = TimeOfDay(hour:event?.hour ?? 9,minute:event?.minute ?? 0);
   var pinned = event?.pinned ?? true;
-  await showDialog<void>(context:context,builder:(ctx) => StatefulBuilder(builder:(ctx,update) => AlertDialog(
+  await showDialog<void>(context:context,builder:(ctx) => _ControllerOwner(controllers:[title,memo],child:StatefulBuilder(builder:(ctx,update) => AlertDialog(
     title:Text(event==null?'일정 등록':'일정 수정'),
     content:SingleChildScrollView(child:Column(mainAxisSize:MainAxisSize.min,children:[
       TextField(controller:title,autofocus:true,decoration:inputStyle('일정 이름')),
       const SizedBox(height:12),
       Row(children:[Expanded(child:OutlinedButton.icon(icon:const Icon(Icons.event),label:Text('${date.month}/${date.day}'),onPressed:() async {
         final picked=await showDatePicker(context:ctx,initialDate:date,firstDate:DateTime(2020),lastDate:DateTime(2100));
-        if(picked!=null)update(()=>date=picked);
+        if(ctx.mounted && picked!=null)update(()=>date=picked);
       })),const SizedBox(width:8),Expanded(child:OutlinedButton.icon(icon:const Icon(Icons.schedule),label:Text(time.format(ctx)),onPressed:() async {
         final picked=await showTimePicker(context:ctx,initialTime:time);
-        if(picked!=null)update(()=>time=picked);
+        if(ctx.mounted && picked!=null)update(()=>time=picked);
       }))]),
       const SizedBox(height:12),TextField(controller:memo,maxLines:3,decoration:inputStyle('상세 메모 (선택)')),
       SwitchListTile(contentPadding:EdgeInsets.zero,title:const Text('당일 메모 상단에 고정'),value:pinned,onChanged:(value)=>update(()=>pinned=value)),
@@ -58,14 +58,14 @@ Future<void> editEventDialog(BuildContext context,PlannerStore store,{PlannerEve
         store.upsertEvent(PlannerEvent(id:event?.id??generateId(),title:title.text.trim(),date:dayKey(date),hour:time.hour,minute:time.minute,memo:memo.text.trim(),pinned:pinned));
         Navigator.pop(ctx);
       },child:const Text('저장'))],
-  )));
-  title.dispose();memo.dispose();
+  ))));
+
 }
 
 Future<void> editNoteDialog(BuildContext context,PlannerStore store,{PlannerNote? note}) async {
   final controller=TextEditingController(text:note?.text ?? '');
   var pinned=note?.pinned ?? false;
-  await showDialog<void>(context:context,builder:(ctx)=>StatefulBuilder(builder:(ctx,update)=>AlertDialog(
+  await showDialog<void>(context:context,builder:(ctx)=>_ControllerOwner(controllers:[controller],child:StatefulBuilder(builder:(ctx,update)=>AlertDialog(
     title:Text(note==null?'메모 추가':'메모 수정'),
     content:SingleChildScrollView(child:Column(mainAxisSize:MainAxisSize.min,children:[
       TextField(controller:controller,autofocus:true,minLines:3,maxLines:7,decoration:inputStyle('메모 내용')),
@@ -77,8 +77,8 @@ Future<void> editNoteDialog(BuildContext context,PlannerStore store,{PlannerNote
         store.upsertNote(PlannerNote(id:note?.id??generateId(),text:controller.text.trim(),pinned:pinned,createdAt:note?.createdAt??DateTime.now().toIso8601String()));
         Navigator.pop(ctx);
       },child:const Text('저장'))],
-  )));
-  controller.dispose();
+  ))));
+
 }
 
 Future<void> editGoalDialog(BuildContext context,PlannerStore store,{GoalItem? goal}) async {
@@ -87,7 +87,7 @@ Future<void> editGoalDialog(BuildContext context,PlannerStore store,{GoalItem? g
   final steps=TextEditingController(text:goal?.steps.join('\n') ?? '');
   DateTime? deadline = goal?.deadline.isNotEmpty==true ? DateTime.tryParse(goal!.deadline):null;
   var pinned=goal?.pinned ?? true;
-  await showDialog<void>(context:context,builder:(ctx)=>StatefulBuilder(builder:(ctx,update)=>AlertDialog(
+  await showDialog<void>(context:context,builder:(ctx)=>_ControllerOwner(controllers:[title,description,steps],child:StatefulBuilder(builder:(ctx,update)=>AlertDialog(
     title:Text(goal==null?'장기 플랜 추가':'장기 플랜 수정'),
     content:SingleChildScrollView(child:Column(mainAxisSize:MainAxisSize.min,children:[
       TextField(controller:title,autofocus:true,decoration:inputStyle('목표 이름',hint:'예: SQLD 취득')),
@@ -97,7 +97,7 @@ Future<void> editGoalDialog(BuildContext context,PlannerStore store,{GoalItem? g
       const SizedBox(height:12),
       Row(children:[Expanded(child:OutlinedButton.icon(onPressed:()async{
         final date=await showDatePicker(context:ctx,initialDate:deadline??DateTime.now(),firstDate:DateTime(2020),lastDate:DateTime(2100));
-        if(date!=null)update(()=>deadline=date);
+        if(ctx.mounted && date!=null)update(()=>deadline=date);
       },icon:const Icon(Icons.flag_outlined),label:Text(deadline==null?'목표일 선택':'목표일: ${dayKey(deadline!)}'))),
         if(deadline!=null)IconButton(onPressed:()=>update(()=>deadline=null),icon:const Icon(Icons.clear))]),
       SwitchListTile(contentPadding:EdgeInsets.zero,title:const Text('오늘 화면에 고정'),value:pinned,onChanged:(v)=>update(()=>pinned=v)),
@@ -113,6 +113,24 @@ Future<void> editGoalDialog(BuildContext context,PlannerStore store,{GoalItem? g
           finishedSteps:lines.map((s)=>oldCompleted[s]??false).toList()));
         Navigator.pop(ctx);
       },child:const Text('저장'))],
-  )));
-  title.dispose();description.dispose();steps.dispose();
+  ))));
+
+}
+
+/// Own controllers for the entire dialog route, including its exit transition.
+class _ControllerOwner extends StatefulWidget {
+  const _ControllerOwner({required this.controllers, required this.child});
+  final List<TextEditingController> controllers;
+  final Widget child;
+  @override
+  State<_ControllerOwner> createState() => _ControllerOwnerState();
+}
+class _ControllerOwnerState extends State<_ControllerOwner> {
+  @override
+  Widget build(BuildContext context) => widget.child;
+  @override
+  void dispose() {
+    for (final controller in widget.controllers) { controller.dispose(); }
+    super.dispose();
+  }
 }
