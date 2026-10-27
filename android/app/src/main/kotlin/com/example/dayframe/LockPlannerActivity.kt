@@ -5,9 +5,6 @@ import android.app.KeyguardManager
 import android.os.Bundle
 import android.os.PowerManager
 import android.view.WindowManager
-import android.graphics.Color
-import android.graphics.drawable.ColorDrawable
-import androidx.core.view.WindowCompat
 import io.flutter.embedding.android.FlutterTextureView
 import io.flutter.embedding.android.FlutterView
 import io.flutter.plugin.platform.PlatformPlugin
@@ -69,16 +66,6 @@ class LockPlannerActivity : Activity() {
             return
         }
 
-        WindowCompat.setDecorFitsSystemWindows(window, false)
-
-        window.statusBarColor = android.graphics.Color.TRANSPARENT
-        window.navigationBarColor = android.graphics.Color.TRANSPARENT
-
-        if (android.os.Build.VERSION.SDK_INT >= 29) {
-            window.isStatusBarContrastEnforced = false
-            window.isNavigationBarContrastEnforced = false
-        }
-
         // Flutter 화면 생성
         platformPlugin = PlatformPlugin(this, engine.platformChannel)
 
@@ -99,24 +86,10 @@ class LockPlannerActivity : Activity() {
     }
 
     fun applySystemBars(dark: Boolean) {
-        val decor = window.decorView
         val surface = LockOverlayService.active?.surfaceColor
             ?: if (dark) 0xFF101512.toInt() else 0xFFF6FAF7.toInt()
-        window.setBackgroundDrawable(ColorDrawable(surface))
+        LockSystemBars.apply(window, surface, dark)
         view?.setBackgroundColor(surface)
-        window.statusBarColor = Color.TRANSPARENT
-        window.navigationBarColor = Color.TRANSPARENT
-        if (android.os.Build.VERSION.SDK_INT >= 28) {
-            window.navigationBarDividerColor = Color.TRANSPARENT
-        }
-        if (android.os.Build.VERSION.SDK_INT >= 29) {
-            window.isStatusBarContrastEnforced = false
-            window.isNavigationBarContrastEnforced = false
-        }
-        WindowCompat.getInsetsController(window, decor).apply {
-            isAppearanceLightStatusBars = !dark
-            isAppearanceLightNavigationBars = !dark
-        }
     }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
