@@ -29,24 +29,13 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
-        <activity
-            android:name=".LockSummaryActivity"
-            android:exported="false"
-            android:excludeFromRecents="true"
-            android:theme="@android:style/Theme.Material.NoActionBar" />
+        <activity android:name=".LockPlannerActivity" android:exported="false" android:showWhenLocked="true"
+            android:excludeFromRecents="true" android:taskAffinity="com.example.dayframe.lock"
+            android:theme="@style/LockTheme" android:hardwareAccelerated="true"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode" />
         <service android:name=".LockOverlayService" android:exported="false" android:foregroundServiceType="specialUse">
             <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                 android:value="User-enabled interactive lock planner overlay on screen-on" />
-        </service>
-        <service
-            android:name=".DayframeTileService"
-            android:exported="true"
-            android:label="DAYFRAME"
-            android:icon="@mipmap/ic_launcher"
-            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
-            <intent-filter>
-                <action android:name="android.service.quicksettings.action.QS_TILE" />
-            </intent-filter>
         </service>
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->

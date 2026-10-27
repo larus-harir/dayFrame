@@ -10,7 +10,8 @@ void main() {
     await tester.pumpWidget(DayframeApp(store: store));
     await tester.pumpAndSettle();
     expect(find.text('DAYFRAME'), findsOneWidget);
-    expect(find.byIcon(Icons.home_rounded), findsOneWidget);
-    expect(find.text('일정'), findsOneWidget);
+    expect(find.byTooltip('관리'), findsOneWidget);
+    expect(find.byTooltip('설정'), findsOneWidget);
+    expect(find.byKey(const Key('board-calendar')), findsOneWidget);
   });
 }

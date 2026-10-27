@@ -117,7 +117,7 @@ Future<void> editGoalDialog(BuildContext context,PlannerStore store,{GoalItem? g
 
 }
 
-/// Own controllers for the entire dialog route, including its exit transition.
+// 닫기 애니메이션이 끝난 뒤 컨트롤러를 해제한다.
 class _ControllerOwner extends StatefulWidget {
   const _ControllerOwner({required this.controllers, required this.child});
   final List<TextEditingController> controllers;

@@ -54,23 +54,8 @@ class MainActivity : FlutterActivity() {
                             }, 250)
                         }
                     }
-                    "sync" -> {
-                        val enabled = call.argument<Boolean>("enabled") == true
-                        val summary = if (enabled) call.argument<String>("summary").orEmpty().take(2000) else ""
-                        // commit avoids a tile launched immediately after sync reading old content.
-                        val saved = prefs.edit().putBoolean("enabled", enabled)
-                            .putString("summary", summary).commit()
-                        LockOverlayService.active?.reload()
-                        if (saved) result.success(null) else result.error("SAVE", "요약 저장 실패", null)
-                    }
-                    "open" -> {
-                        if (!prefs.getBoolean("enabled", false)) {
-                            result.error("DISABLED", "설정에서 먼저 활성화하세요.", null)
-                        } else {
-                            startActivity(Intent(this, LockSummaryActivity::class.java))
-                            result.success(null)
-                        }
-                    }
+                    "displayStatus" -> result.success(prefs.getString("displayStatus", null))
+                    "refresh" -> { LockOverlayService.active?.reload(); result.success(null) }
                     else -> result.notImplemented()
                 }
             }

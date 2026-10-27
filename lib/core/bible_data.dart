@@ -1,7 +1,7 @@
 import 'verse_counts.dart';
 export 'verse_counts.dart';
 
-/// 개신교 성경 66권의 장 수. 본문은 저작권/라이선스 때문에 포함하지 않음.
+// 개신교 66권의 장 수.
 const bibleBookNames = <String>[
   '창세기','출애굽기','레위기','민수기','신명기','여호수아','사사기','룻기','사무엘상','사무엘하',
   '열왕기상','열왕기하','역대상','역대하','에스라','느헤미야','에스더','욥기','시편','잠언',
@@ -48,8 +48,7 @@ class BibleVerse {
   String get reference => '${bibleBookNames[book]} $chapter장 $verse절';
   String get key => '$book:$chapter:$verse';
 }
-// Precompute once so looking for the next unread verse stays linear in verses,
-// rather than multiplying by the number of chapters.
+// 절 위치는 한 번만 계산해 둔다.
 final _verses = <BibleVerse>[
   for(var b=0, index=0;b<bibleVerseCounts.length;b++)
     for(var c=0;c<bibleVerseCounts[b].length;c++)
@@ -66,7 +65,7 @@ int bibleVerseIndex(int book, int chapter, [int verse=1]) {
   return index;
 }
 
-/// Expand legacy chapter completion to its verses, retaining the recorded date.
+// 장 단위 기록의 날짜를 각 절에 그대로 옮긴다.
 Map<String,String> migrateChapterDates(Map<String,String> chapters) {
   final result=<String,String>{};
   for(final entry in chapters.entries) {

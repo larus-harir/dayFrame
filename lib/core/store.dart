@@ -43,7 +43,7 @@ class PlannerStore extends ChangeNotifier {
       display = DisplayPreferences.fromJson(Map<String,dynamic>.from(data['display'] as Map? ?? {}));
       biblePage = ((data['biblePage'] as num?)?.toInt() ?? 0).clamp(0, 1188).toInt();
       if (data['schemaVersion'] != 2) {
-        // Preserve the original payload before the first schema upgrade.
+        // 이전 전 원본을 한 번 보관한다.
         if(await _prefs.getString('dayframe_data_v1_pre_verse_backup') == null) {
           await _prefs.setString('dayframe_data_v1_pre_verse_backup', raw);
         }

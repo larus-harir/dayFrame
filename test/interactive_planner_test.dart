@@ -12,10 +12,8 @@ void main() {
     final prefs=memoryPreferences();
     final store=PlannerStore(prefs);
     store.tasks.add(TaskItem(id:'home',title:'메인 체크'));
-    void noop(){}
     await tester.pumpWidget(MaterialApp(home:Scaffold(body:AnimatedBuilder(animation:store,
-      builder:(_,_)=>TodayScreen(store:store,openGoals:noop,openCalendar:noop,openNotes:noop,openPreview:noop)))));
-    await tester.scrollUntilVisible(find.byType(CheckboxListTile),200);
+      builder:(_,_)=>TodayScreen(store:store)))));
     await tester.tap(find.byType(CheckboxListTile));await tester.pumpAndSettle();
     expect(store.tasks.single.isDone(DateTime.now()),isTrue);
     await store.flush();

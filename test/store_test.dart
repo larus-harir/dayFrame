@@ -1,10 +1,8 @@
 import 'dart:convert';
+import 'package:dayframe/core/models.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:dayframe/core/bible_data.dart';
-import 'package:dayframe/core/models.dart';
 import 'package:dayframe/core/store.dart';
-import 'package:dayframe/core/format.dart';
-import 'package:dayframe/core/lock_summary.dart';
 import 'test_support.dart';
 
 void main() {
@@ -71,20 +69,6 @@ void main() {
     store.toggleTask(editing,DateTime(2026,10,26));await store.flush();
     expect(store.tasks.single.title,'after');
     expect(store.tasks.single.isDone(DateTime(2026,10,26)),isTrue);
-    store.dispose();
-  });
-  test('privacy hides personal content in every section', () {
-    final store = PlannerStore(memoryPreferences());
-    final date = DateTime(2026,10,26);
-    store.tasks.add(TaskItem(id:'t',title:'SECRET_TASK'));
-    store.events.add(PlannerEvent(id:'e',title:'SECRET_EVENT',date:dayKey(date),hour:9,minute:0));
-    store.goals.add(GoalItem(id:'g',title:'SECRET_GOAL',steps:[],finishedSteps:[]));
-    store.notes.add(PlannerNote(id:'n',text:'SECRET_NOTE',createdAt:'',pinned:true));
-    expect(nativeSummary(store,date),isNot(contains('SECRET')));
-    store.display.hidePrivateDetails=false;
-    expect(nativeSummary(store,date),contains('SECRET_TASK'));
-    store.display.tasks=false;
-    expect(nativeSummary(store,date),isNot(contains('SECRET_TASK')));
     store.dispose();
   });
 }
