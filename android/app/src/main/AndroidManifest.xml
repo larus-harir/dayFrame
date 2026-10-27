@@ -29,7 +29,7 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
-        <activity android:name=".LockPlannerActivity" android:exported="false" android:showWhenLocked="true"
+        <activity android:windowSoftInputMode="adjustResize" android:name=".LockPlannerActivity" android:exported="false" android:showWhenLocked="true"
             android:excludeFromRecents="true" android:taskAffinity="com.example.dayframe.lock"
             android:theme="@style/LockTheme" android:hardwareAccelerated="true"
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode" />

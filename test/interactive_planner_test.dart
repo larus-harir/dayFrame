@@ -14,6 +14,7 @@ void main() {
     store.tasks.add(TaskItem(id:'home',title:'메인 체크'));
     await tester.pumpWidget(MaterialApp(home:Scaffold(body:AnimatedBuilder(animation:store,
       builder:(_,_)=>TodayScreen(store:store)))));
+    await tester.pumpAndSettle();
     await tester.tap(find.byType(CheckboxListTile));await tester.pumpAndSettle();
     expect(store.tasks.single.isDone(DateTime.now()),isTrue);
     await store.flush();

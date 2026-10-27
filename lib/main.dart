@@ -115,7 +115,7 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
     if (state == AppLifecycleState.resumed && mounted) reloadAfterLock();
   }
 
-  void openPage(String title, Widget child) => Navigator.push(
+  void openPage(String title, WidgetBuilder page) => Navigator.push(
     context,
     MaterialPageRoute<void>(
       builder: (_) => Scaffold(
@@ -123,7 +123,7 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
         body: SafeArea(
           child: AnimatedBuilder(
             animation: widget.store,
-            builder: (_, _) => child,
+            builder: (context, _) => page(context),
           ),
         ),
       ),
@@ -137,12 +137,14 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
         IconButton(
           tooltip: '관리',
           icon: const Icon(Icons.edit_note),
-          onPressed: () => openPage('관리', ManageScreen(store: widget.store)),
+          onPressed: () =>
+              openPage('관리', (_) => ManageScreen(store: widget.store)),
         ),
         IconButton(
           tooltip: '설정',
           icon: const Icon(Icons.settings_outlined),
-          onPressed: () => openPage('설정', SettingsScreen(store: widget.store)),
+          onPressed: () =>
+              openPage('설정', (_) => SettingsScreen(store: widget.store)),
         ),
       ],
     ),

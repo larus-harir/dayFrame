@@ -14,10 +14,25 @@ class ManageScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) => ListView(
     children: [
-      _link(context, '일정', Icons.calendar_month, CalendarScreen(store: store)),
-      _link(context, '체크리스트', Icons.checklist, _TaskManager(store: store)),
-      _link(context, '메모', Icons.notes, NotesScreen(store: store)),
-      _link(context, '장기 목표', Icons.flag_outlined, GoalsScreen(store: store)),
+      _link(
+        context,
+        '일정',
+        Icons.calendar_month,
+        () => CalendarScreen(store: store),
+      ),
+      _link(
+        context,
+        '체크리스트',
+        Icons.checklist,
+        () => _TaskManager(store: store),
+      ),
+      _link(context, '메모', Icons.notes, () => NotesScreen(store: store)),
+      _link(
+        context,
+        '장기 목표',
+        Icons.flag_outlined,
+        () => GoalsScreen(store: store),
+      ),
       ListTile(
         leading: const Icon(Icons.menu_book),
         title: const Text('성경 기록'),
@@ -33,7 +48,7 @@ class ManageScreen extends StatelessWidget {
     BuildContext context,
     String title,
     IconData icon,
-    Widget page,
+    Widget Function() page,
   ) => ListTile(
     leading: Icon(icon),
     title: Text(title),
@@ -44,7 +59,7 @@ class ManageScreen extends StatelessWidget {
         builder: (_) => Scaffold(
           appBar: AppBar(title: Text(title)),
           body: SafeArea(
-            child: AnimatedBuilder(animation: store, builder: (_, _) => page),
+            child: AnimatedBuilder(animation: store, builder: (_, _) => page()),
           ),
         ),
       ),

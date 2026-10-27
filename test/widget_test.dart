@@ -12,6 +12,6 @@ void main() {
     expect(find.text('DAYFRAME'), findsOneWidget);
     expect(find.byTooltip('관리'), findsOneWidget);
     expect(find.byTooltip('설정'), findsOneWidget);
-    expect(find.byKey(const Key('board-calendar')), findsOneWidget);
+    expect(find.byKey(const Key('board-pages')), findsOneWidget);
   });
 }

@@ -1,0 +1,185 @@
+import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
+
+class PagedBoard extends StatefulWidget {
+  const PagedBoard({super.key, required this.sections, required this.onClose});
+  final Map<String, Widget> sections;
+  final VoidCallback onClose;
+  @override
+  State<PagedBoard> createState() => _PagedBoardState();
+}
+
+class _PagedBoardState extends State<PagedBoard> {
+  final controller = PageController();
+  final heights = <String, double>{};
+  int page = 0;
+  @override
+  void dispose() {
+    controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => Column(
+    children: [
+      Expanded(
+        child: LayoutBuilder(
+          builder: (context, bounds) {
+            final budget = (bounds.maxHeight - 32).clamp(1.0, double.infinity);
+            final pages = <List<Widget>>[[]];
+            var used = 0.0;
+            for (final entry in widget.sections.entries) {
+              final height = heights[entry.key] ?? budget;
+              if (pages.last.isNotEmpty && used + height > budget) {
+                pages.add([]);
+                used = 0;
+              }
+              pages.last.add(entry.value);
+              used += height;
+            }
+            if (page >= pages.length) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (mounted && controller.hasClients) {
+                  controller.jumpToPage(pages.length - 1);
+                }
+              });
+            }
+            return Stack(
+              children: [
+                Offstage(
+                  child: SingleChildScrollView(
+                    child: Column(
+                      children: [
+                        for (final entry in widget.sections.entries)
+                          _Measure(
+                            key: ValueKey(entry.key),
+                            onSize: (size) {
+                              if (mounted &&
+                                  heights[entry.key] != size.height) {
+                                setState(
+                                  () => heights[entry.key] = size.height,
+                                );
+                              }
+                            },
+                            child: SizedBox(
+                              width: bounds.maxWidth,
+                              child: entry.value,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+                Column(
+                  children: [
+                    Expanded(
+                      child: PageView(
+                        controller: controller,
+                        key: const Key('board-pages'),
+                        onPageChanged: (value) => setState(() => page = value),
+                        children: [
+                          for (var i = 0; i < pages.length; i++)
+                            SingleChildScrollView(
+                              key: ValueKey('board-page-$i'),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: pages[i],
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                    SizedBox(
+                      height: 32,
+                      child: pages.length > 1
+                          ? Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                IconButton(
+                                  tooltip: '이전 페이지',
+                                  padding: EdgeInsets.zero,
+                                  onPressed: page <= 0
+                                      ? null
+                                      : () => controller.previousPage(
+                                          duration: const Duration(
+                                            milliseconds: 200,
+                                          ),
+                                          curve: Curves.easeOut,
+                                        ),
+                                  icon: const Icon(
+                                    Icons.chevron_left,
+                                    size: 18,
+                                  ),
+                                ),
+                                Text(
+                                  '${page.clamp(0, pages.length - 1) + 1} / ${pages.length}',
+                                ),
+                                IconButton(
+                                  tooltip: '다음 페이지',
+                                  padding: EdgeInsets.zero,
+                                  onPressed: page >= pages.length - 1
+                                      ? null
+                                      : () => controller.nextPage(
+                                          duration: const Duration(
+                                            milliseconds: 200,
+                                          ),
+                                          curve: Curves.easeOut,
+                                        ),
+                                  icon: const Icon(
+                                    Icons.chevron_right,
+                                    size: 18,
+                                  ),
+                                ),
+                              ],
+                            )
+                          : null,
+                    ),
+                  ],
+                ),
+              ],
+            );
+          },
+        ),
+      ),
+      SizedBox(
+        height: 52,
+        width: double.infinity,
+        child: TextButton.icon(
+          key: const Key('board-close'),
+          onPressed: widget.onClose,
+          icon: const Icon(Icons.close, size: 18),
+          label: const Text('닫기'),
+        ),
+      ),
+    ],
+  );
+}
+
+class _Measure extends SingleChildRenderObjectWidget {
+  const _Measure({super.key, required this.onSize, required super.child});
+  final ValueChanged<Size> onSize;
+  @override
+  RenderObject createRenderObject(BuildContext context) => _MeasureBox(onSize);
+  @override
+  void updateRenderObject(
+    BuildContext context,
+    covariant _MeasureBox renderObject,
+  ) {
+    renderObject.onSize = onSize;
+  }
+}
+
+class _MeasureBox extends RenderProxyBox {
+  _MeasureBox(this.onSize);
+  ValueChanged<Size> onSize;
+  Size? previous;
+  @override
+  void performLayout() {
+    super.performLayout();
+    if (previous != size) {
+      previous = size;
+      final measured = size;
+      WidgetsBinding.instance.addPostFrameCallback((_) => onSize(measured));
+    }
+  }
+}

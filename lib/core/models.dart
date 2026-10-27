@@ -90,7 +90,10 @@ class DisplayPreferences {
   bool hidePrivateDetails = true;
   bool darkMode = false;
   bool lockSurfaceEnabled = false;
+  bool lockCreateNote = false;
+  bool lockCreateEvent = false;
   Map<String,dynamic> toJson() => {
+    'lockCreateNote':lockCreateNote, 'lockCreateEvent':lockCreateEvent,
     'bible':bible,'tasks':tasks,'goals':goals,'notes':notes,'events':events,
     'lockSurfaceEnabled':lockSurfaceEnabled, 'hidePrivateDetails':hidePrivateDetails,'darkMode':darkMode,
   };
@@ -103,6 +106,8 @@ class DisplayPreferences {
     value.events = json['events'] != false;
     value.hidePrivateDetails = json['hidePrivateDetails'] != false;
     value.lockSurfaceEnabled = json['lockSurfaceEnabled'] == true;
+    value.lockCreateNote = json['lockCreateNote'] == true;
+    value.lockCreateEvent = json['lockCreateEvent'] == true;
     value.darkMode = json['darkMode'] == true;
     return value;
   }
