@@ -10,7 +10,7 @@ import 'widgets/planner_board.dart';
 @pragma('vm:entry-point')
 Future<void> lockOverlayMain() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+  // 시스템 바는 Activity가 연결된 뒤 네이티브에서 설정한다.
   final store = PlannerStore(SharedPreferencesAsync());
   try {
     await store.load();
