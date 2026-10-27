@@ -3,8 +3,14 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/gestures.dart';
 
 class PagedBoard extends StatefulWidget {
-  const PagedBoard({super.key, required this.sections, required this.onClose});
+  const PagedBoard({
+    super.key,
+    required this.sections,
+    required this.onClose,
+    this.compactSections = const {},
+  });
   final Map<String, Widget> sections;
+  final Map<String, Widget> compactSections;
   final VoidCallback onClose;
   @override
   State<PagedBoard> createState() => _PagedBoardState();
@@ -30,12 +36,30 @@ class _PagedBoardState extends State<PagedBoard> {
             final pages = <List<Widget>>[[]];
             var used = 0.0;
             for (final entry in widget.sections.entries) {
-              final height = heights[entry.key] ?? budget;
+              final fullHeight = heights[entry.key] ?? budget;
+              final compact = widget.compactSections[entry.key];
+              final smallHeight = heights['compact-${entry.key}'] ?? fullHeight;
+              var child = entry.value;
+              var height = fullHeight;
+              if (compact != null &&
+                  used + fullHeight > budget &&
+                  (used + smallHeight <= budget || fullHeight > budget)) {
+                child = compact;
+                height = smallHeight;
+              }
               if (pages.last.isNotEmpty && used + height > budget) {
                 pages.add([]);
                 used = 0;
+                child = fullHeight <= budget
+                    ? entry.value
+                    : compact ?? entry.value;
+                height = fullHeight <= budget
+                    ? fullHeight
+                    : compact != null
+                    ? smallHeight
+                    : fullHeight;
               }
-              pages.last.add(entry.value);
+              pages.last.add(child);
               used += height;
             }
             if (page >= pages.length) {
@@ -51,7 +75,11 @@ class _PagedBoardState extends State<PagedBoard> {
                   child: SingleChildScrollView(
                     child: Column(
                       children: [
-                        for (final entry in widget.sections.entries)
+                        for (final entry in {
+                          ...widget.sections,
+                          for (final item in widget.compactSections.entries)
+                            'compact-${item.key}': item.value,
+                        }.entries)
                           _Measure(
                             key: ValueKey(entry.key),
                             onSize: (size) {

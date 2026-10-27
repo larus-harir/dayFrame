@@ -23,6 +23,12 @@ class PlannerBoard extends StatefulWidget {
 class _PlannerBoardState extends State<PlannerBoard> {
   DateTime selected = dateOnly(DateTime.now());
   late DateTime month = DateTime(selected.year, selected.month);
+  late DateTime week = DateTime(
+    selected.year,
+    selected.month,
+    selected.day - selected.weekday + 1,
+  );
+  String? tappedDay;
 
   @override
   Widget build(BuildContext context) {
@@ -36,11 +42,103 @@ class _PlannerBoardState extends State<PlannerBoard> {
         final events = store.eventsOn(selected);
         final notes = store.sortedNotes;
         final daily = tasks;
+        Widget calendarAndMemo(bool weekly) => Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _section(
+              '캘린더',
+              key: const Key('board-calendar'),
+              child: CompactCalendar(
+                key: Key(weekly ? 'calendar-week' : 'calendar-month'),
+                weekly: weekly,
+                weekStart: week,
+                month: month,
+                selected: selected,
+                hasEvents: (date) =>
+                    store.display.events && store.eventsOn(date).isNotEmpty,
+                onSelect: (date) {
+                  final repeated = tappedDay == dayKey(date);
+                  setState(() {
+                    selected = date;
+                    month = DateTime(date.year, date.month);
+                    tappedDay = dayKey(date);
+                    week = DateTime(
+                      date.year,
+                      date.month,
+                      date.day - date.weekday + 1,
+                    );
+                  });
+                  if (repeated &&
+                      (!widget.locked || store.display.lockCreateEvent)) {
+                    tappedDay = null;
+                    editEventDialog(context, store, initialDate: date);
+                  }
+                },
+                onMonth: (delta) => setState(() {
+                  tappedDay = null;
+                  if (weekly) {
+                    week = DateTime(
+                      week.year,
+                      week.month,
+                      week.day + delta * 7,
+                    );
+                    selected = DateTime(
+                      week.year,
+                      week.month,
+                      week.day + selected.weekday - 1,
+                    );
+                    month = DateTime(selected.year, selected.month);
+                  } else {
+                    month = DateTime(month.year, month.month + delta);
+                  }
+                }),
+              ),
+            ),
+            if (store.display.events || store.display.notes)
+              _section(
+                '${formatDate(selected)} · 메모',
+                key: const Key('board-memo'),
+                onTap: () => openMemo(context),
+                child: hidden
+                    ? const Text('일정과 메모를 숨겼습니다.')
+                    : ConstrainedBox(
+                        constraints: const BoxConstraints(maxHeight: 116),
+                        child: SingleChildScrollView(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              if (store.display.events)
+                                for (final event in events)
+                                  Padding(
+                                    key: ValueKey('memo-event-${event.id}'),
+                                    padding: const EdgeInsets.only(bottom: 6),
+                                    child: Text(
+                                      '${event.clock}  ${event.title}${event.memo.isEmpty ? '' : '\n${event.memo}'}',
+                                    ),
+                                  ),
+                              if (store.display.notes)
+                                for (final note in notes)
+                                  Padding(
+                                    key: ValueKey('memo-note-${note.id}'),
+                                    padding: const EdgeInsets.only(bottom: 6),
+                                    child: Text(note.text),
+                                  ),
+                              if ((!store.display.events || events.isEmpty) &&
+                                  (!store.display.notes || notes.isEmpty))
+                                const Text('일정과 메모가 없습니다.'),
+                            ],
+                          ),
+                        ),
+                      ),
+              ),
+          ],
+        );
         return Padding(
           key: const Key('planner-board'),
           padding: EdgeInsets.zero,
           child: PagedBoard(
             onClose: widget.onClose,
+            compactSections: {'calendar-memo': calendarAndMemo(true)},
             sections: {
               if (store.display.bible)
                 'bible': VerseCard(key: const Key('board-bible'), store: store),
@@ -78,64 +176,7 @@ class _PlannerBoardState extends State<PlannerBoard> {
                           ),
                         ),
                 ),
-              'calendar': _section(
-                '캘린더',
-                key: const Key('board-calendar'),
-                child: CompactCalendar(
-                  month: month,
-                  selected: selected,
-                  hasEvents: (date) =>
-                      store.display.events && store.eventsOn(date).isNotEmpty,
-                  onSelect: (date) {
-                    setState(() => selected = date);
-                    if (!widget.locked || store.display.lockCreateEvent) {
-                      editEventDialog(context, store, initialDate: date);
-                    }
-                  },
-                  onMonth: (delta) => setState(
-                    () => month = DateTime(month.year, month.month + delta),
-                  ),
-                ),
-              ),
-              if (store.display.events || store.display.notes)
-                'memo': _section(
-                  '${formatDate(selected)} · 메모',
-                  key: const Key('board-memo'),
-                  onTap: !widget.locked || store.display.lockCreateNote
-                      ? () => editNoteDialog(context, store)
-                      : null,
-                  child: hidden
-                      ? const Text('일정과 메모를 숨겼습니다.')
-                      : ConstrainedBox(
-                          constraints: const BoxConstraints(maxHeight: 116),
-                          child: SingleChildScrollView(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                if (store.display.events)
-                                  for (final event in events)
-                                    Padding(
-                                      key: ValueKey('memo-event-${event.id}'),
-                                      padding: const EdgeInsets.only(bottom: 6),
-                                      child: Text(
-                                        '${event.clock}  ${event.title}${event.memo.isEmpty ? '' : '\n${event.memo}'}',
-                                      ),
-                                    ),
-                                if (store.display.notes)
-                                  for (final note in notes)
-                                    Padding(
-                                      key: ValueKey('memo-note-${note.id}'),
-                                      padding: const EdgeInsets.only(bottom: 6),
-                                      child: Text(note.text),
-                                    ),
-                                if ((!store.display.events || events.isEmpty) &&
-                                    (!store.display.notes || notes.isEmpty))
-                                  const Text('일정과 메모가 없습니다.'),
-                              ],
-                            ),
-                          ),
-                        ),
-                ),
+              'calendar-memo': calendarAndMemo(false),
               if (store.display.goals && (hidden || store.goals.isEmpty))
                 'goals': _section(
                   '장기 플랜',
@@ -182,6 +223,107 @@ class _PlannerBoardState extends State<PlannerBoard> {
         );
       },
     );
+  }
+
+  Future<void> openMemo(BuildContext context) async {
+    final store = widget.store;
+    final result = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AnimatedBuilder(
+        animation: store,
+        builder: (ctx, _) {
+          final hidden = widget.locked && store.display.hidePrivateDetails;
+          final canNote = !widget.locked || store.display.lockCreateNote;
+          final canEvent = !widget.locked || store.display.lockCreateEvent;
+          return AlertDialog(
+            title: const Text('메모'),
+            content: SizedBox(
+              width: double.maxFinite,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxHeight: 320),
+                child: ListView(
+                  shrinkWrap: true,
+                  children: [
+                    if (hidden)
+                      const Text('잠금화면에서 내용을 숨겼습니다.')
+                    else ...[
+                      if (store.display.events)
+                        for (final event in store.eventsOn(selected))
+                          ListTile(
+                            contentPadding: EdgeInsets.zero,
+                            title: Text('${event.clock} ${event.title}'),
+                            trailing: canEvent
+                                ? TextButton(
+                                    onPressed: () =>
+                                        Navigator.pop(ctx, 'event:${event.id}'),
+                                    child: const Text('수정'),
+                                  )
+                                : null,
+                          ),
+                      if (store.display.notes)
+                        for (final note in store.sortedNotes)
+                          ListTile(
+                            contentPadding: EdgeInsets.zero,
+                            title: Text(note.text),
+                            trailing: canNote
+                                ? TextButton(
+                                    key: ValueKey('edit-note-${note.id}'),
+                                    onPressed: () =>
+                                        Navigator.pop(ctx, 'note:${note.id}'),
+                                    child: const Text('수정'),
+                                  )
+                                : null,
+                          ),
+                      if (store.notes.isEmpty &&
+                          store.eventsOn(selected).isEmpty)
+                        const Text('등록된 내용이 없습니다.'),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('닫기'),
+              ),
+              if (canNote)
+                FilledButton(
+                  key: const Key('memo-create'),
+                  onPressed: () => Navigator.pop(ctx, 'create'),
+                  child: const Text('등록'),
+                ),
+            ],
+          );
+        },
+      ),
+    );
+    if (!context.mounted || result == null) return;
+    if (result == 'create') {
+      if (!widget.locked || store.display.lockCreateNote) {
+        await editNoteDialog(context, store);
+      }
+      return;
+    }
+    if (widget.locked && store.display.hidePrivateDetails) return;
+    if (result.startsWith('note:') &&
+        (!widget.locked || store.display.lockCreateNote)) {
+      for (final note in store.notes) {
+        if (note.id == result.substring(5)) {
+          await editNoteDialog(context, store, note: note);
+          break;
+        }
+      }
+    }
+    if (result.startsWith('event:') &&
+        (!widget.locked || store.display.lockCreateEvent)) {
+      for (final event in store.events) {
+        if (event.id == result.substring(6)) {
+          await editEventDialog(context, store, event: event);
+          break;
+        }
+      }
+    }
   }
 
   Widget _section(

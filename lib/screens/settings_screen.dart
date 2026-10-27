@@ -25,16 +25,16 @@ class SettingsScreen extends StatelessWidget {
           onChanged: (value) => store.updateDisplay((p) => p.darkMode = value),
         ),
         ExpansionTile(
-          title: const Text('잠금화면에서 추가 허용'),
+          title: const Text('잠금화면에서 작성 허용'),
           children: [
             SwitchListTile(
-              title: const Text('메모 추가'),
+              title: const Text('메모 등록·수정'),
               value: store.display.lockCreateNote,
               onChanged: (v) =>
                   store.updateDisplay((p) => p.lockCreateNote = v),
             ),
             SwitchListTile(
-              title: const Text('일정 등록'),
+              title: const Text('일정 등록·수정'),
               value: store.display.lockCreateEvent,
               onChanged: (v) =>
                   store.updateDisplay((p) => p.lockCreateEvent = v),

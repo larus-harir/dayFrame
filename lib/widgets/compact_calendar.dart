@@ -10,8 +10,12 @@ class CompactCalendar extends StatelessWidget {
     required this.onSelect,
     required this.onMonth,
     required this.hasEvents,
+    this.weekly = false,
+    this.weekStart,
   });
   final DateTime month, selected;
+  final bool weekly;
+  final DateTime? weekStart;
   final ValueChanged<DateTime> onSelect;
   final ValueChanged<int> onMonth;
   final bool Function(DateTime) hasEvents;
@@ -21,7 +25,14 @@ class CompactCalendar extends StatelessWidget {
     final colors = Theme.of(context).colorScheme;
     final first = DateTime(month.year, month.month).weekday - 1;
     final length = DateTime(month.year, month.month + 1, 0).day;
-    final rows = (first + length + 6) ~/ 7;
+    final rows = weekly ? 1 : (first + length + 6) ~/ 7;
+    final start =
+        weekStart ??
+        DateTime(
+          selected.year,
+          selected.month,
+          selected.day - selected.weekday + 1,
+        );
     final today = dayKey(DateTime.now());
     final cellHeight = math.max(
       34.0,
@@ -32,19 +43,21 @@ class CompactCalendar extends StatelessWidget {
         Row(
           children: [
             IconButton(
-              tooltip: '이전 달',
+              tooltip: weekly ? '이전 주' : '이전 달',
               onPressed: () => onMonth(-1),
               icon: const Icon(Icons.chevron_left),
             ),
             Expanded(
               child: Text(
-                '${month.year}년 ${month.month}월',
+                weekly
+                    ? '${start.month}/${start.day} – ${DateTime(start.year, start.month, start.day + 6).month}/${DateTime(start.year, start.month, start.day + 6).day}'
+                    : '${month.year}년 ${month.month}월',
                 textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.titleSmall,
               ),
             ),
             IconButton(
-              tooltip: '다음 달',
+              tooltip: weekly ? '다음 주' : '다음 달',
               onPressed: () => onMonth(1),
               icon: const Icon(Icons.chevron_right),
             ),
@@ -72,15 +85,17 @@ class CompactCalendar extends StatelessWidget {
                   child: Builder(
                     builder: (context) {
                       final number = row * 7 + col - first + 1;
-                      if (number < 1 || number > length) {
+                      if (!weekly && (number < 1 || number > length)) {
                         return SizedBox(height: cellHeight);
                       }
-                      final date = DateTime(month.year, month.month, number);
+                      final date = weekly
+                          ? DateTime(start.year, start.month, start.day + col)
+                          : DateTime(month.year, month.month, number);
                       final active = dayKey(date) == dayKey(selected);
                       final event = hasEvents(date);
                       return Semantics(
                         label:
-                            '${month.month}월 $number일${event ? ', 일정 있음' : ''}',
+                            '${date.month}월 ${date.day}일${event ? ', 일정 있음' : ''}',
                         selected: active,
                         child: InkWell(
                           key: ValueKey('day-${dayKey(date)}'),
@@ -104,7 +119,7 @@ class CompactCalendar extends StatelessWidget {
                                     child: FittedBox(
                                       fit: BoxFit.scaleDown,
                                       child: Text(
-                                        '$number',
+                                        '${date.day}',
                                         style: TextStyle(
                                           fontSize: 12,
                                           fontWeight: active

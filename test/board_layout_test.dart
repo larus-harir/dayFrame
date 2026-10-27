@@ -5,6 +5,7 @@ import 'package:dayframe/core/models.dart';
 import 'package:dayframe/core/store.dart';
 import 'package:dayframe/widgets/planner_board.dart';
 import 'package:dayframe/widgets/paged_board.dart';
+import 'package:dayframe/widgets/compact_calendar.dart';
 import 'package:dayframe/main.dart';
 import 'test_support.dart';
 
@@ -49,14 +50,72 @@ void main() {
     store.notes.add(PlannerNote(id:'old',text:'기존 메모',createdAt:''));
     await tester.pumpWidget(MaterialApp(home:Scaffold(body:PlannerBoard(store:store,onClose:(){}))));await tester.pumpAndSettle();
     await tester.tap(find.byKey(ValueKey('day-${dayKey(date)}')));await tester.pumpAndSettle();
+    expect(find.byType(AlertDialog),findsNothing);
+    await tester.tap(find.byKey(ValueKey('day-${dayKey(date)}')));await tester.pumpAndSettle();
     expect(find.byType(AlertDialog),findsOneWidget);
     await tester.enterText(find.byType(TextField).first,'날짜 일정');await tester.tap(find.text('저장'));await tester.pumpAndSettle();
     expect(store.events.single.date,dayKey(date));
     await tester.tap(find.text('기존 메모'));await tester.pumpAndSettle();
+    expect(find.byType(TextField),findsNothing);
+    await tester.tap(find.byKey(const Key('memo-create')));await tester.pumpAndSettle();
     expect(tester.widget<TextField>(find.byType(TextField)).controller!.text,isEmpty);
     await tester.enterText(find.byType(TextField),'새 메모');await tester.tap(find.text('저장'));await tester.pumpAndSettle();
     expect(store.notes.map((n)=>n.text),containsAll(['기존 메모','새 메모']));
     await store.flush();store.dispose();
+  });
+  testWidgets('calendar and memo stay together by using a week on a short screen', (tester) async {
+    size(tester,const Size(400,680));
+    final store=PlannerStore(memoryPreferences());
+    store.tasks.add(TaskItem(id:'a',title:'오늘 할 일'));
+    store.notes.add(PlannerNote(id:'n',text:'첫 줄\n둘째 줄\n셋째 줄\n넷째 줄\n다섯째 줄\n여섯째 줄',createdAt:''));
+    await tester.pumpWidget(MaterialApp(home:Scaffold(body:PlannerBoard(store:store,onClose:(){}))));await tester.pumpAndSettle();
+    expect(find.byKey(const Key('calendar-week')),findsOneWidget);
+    final memo=tester.getRect(find.byKey(const Key('board-memo')));
+    final calendar=tester.getRect(find.byKey(const Key('board-calendar')));
+    expect(memo.top,greaterThanOrEqualTo(calendar.bottom));
+    expect(memo.bottom,lessThanOrEqualTo(tester.getTopLeft(find.byKey(const Key('board-close'))).dy-32));
+    expect(tester.takeException(),isNull);store.dispose();
+  });
+  testWidgets('calendar and memo move to the next page as one group when neither view fits', (tester) async {
+    size(tester,const Size(400,620));
+    final store=PlannerStore(memoryPreferences());
+    store.tasks.add(TaskItem(id:'a',title:'할 일'));
+    store.notes.add(PlannerNote(id:'n',text:'첫 줄\n둘째 줄\n셋째 줄\n넷째 줄\n다섯째 줄\n여섯째 줄',createdAt:''));
+    await tester.pumpWidget(MaterialApp(home:Scaffold(body:PlannerBoard(store:store,onClose:(){}))));await tester.pumpAndSettle();
+    for(var i=0;i<5;i++) {
+      final finder=find.byKey(const Key('board-calendar'));
+      if(finder.evaluate().isNotEmpty && tester.getRect(finder).left>=0 && tester.getRect(finder).right<=400) break;
+      await next(tester);
+    }
+    final calendar=tester.getRect(find.byKey(const Key('board-calendar')));
+    final memo=tester.getRect(find.byKey(const Key('board-memo')));
+    expect(calendar.top,greaterThanOrEqualTo(0));expect(memo.left,calendar.left);
+    expect(memo.top,greaterThanOrEqualTo(calendar.bottom));expect(memo.bottom,lessThanOrEqualTo(536));
+    store.dispose();
+  });
+  testWidgets('weekly view indexes all seven days across a year boundary', (tester) async {
+    DateTime? picked;
+    await tester.pumpWidget(MaterialApp(home:Scaffold(body:CompactCalendar(
+      weekly:true,weekStart:DateTime(2026,12,28),month:DateTime(2026,12),selected:DateTime(2026,12,31),
+      onSelect:(date)=>picked=date,onMonth:(_){},hasEvents:(_)=>false))));
+    expect(find.byKey(const ValueKey('day-2026-12-28')),findsOneWidget);
+    expect(find.byKey(const ValueKey('day-2027-01-03')),findsOneWidget);
+    expect(find.byKey(const ValueKey('day-2027-01-04')),findsNothing);
+    await tester.tap(find.byKey(const ValueKey('day-2027-01-01')));
+    expect(picked,DateTime(2027,1,1));
+  });
+  testWidgets('memo popup edits an existing note without adding a duplicate', (tester) async {
+    size(tester,const Size(400,1200));
+    final prefs=memoryPreferences();final store=PlannerStore(prefs);
+    store.notes.add(PlannerNote(id:'n',text:'수정 전',createdAt:''));
+    await tester.pumpWidget(MaterialApp(home:Scaffold(body:PlannerBoard(store:store,onClose:(){}))));await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('board-memo')));await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('edit-note-n')));await tester.pumpAndSettle();
+    expect(tester.widget<TextField>(find.byType(TextField)).controller!.text,'수정 전');
+    await tester.enterText(find.byType(TextField),'수정 후');await tester.tap(find.text('저장'));await tester.pumpAndSettle();
+    expect(store.notes.single.id,'n');expect(store.notes.single.text,'수정 후');
+    await store.flush();final other=PlannerStore(prefs);await other.load();expect(other.notes.single.text,'수정 후');
+    store.dispose();other.dispose();
   });
   testWidgets('calendar events precede notes', (tester) async {
     size(tester,const Size(400,1200));
@@ -107,12 +166,15 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('add-note')),findsNothing);
     await tester.tap(find.byKey(const Key('board-memo')));await tester.pumpAndSettle();
-    expect(find.byType(AlertDialog),findsNothing);
+    expect(find.byType(AlertDialog),findsOneWidget);
+    expect(find.byKey(const Key('memo-create')),findsNothing);
+    await tester.tap(find.descendant(of:find.byType(AlertDialog),matching:find.text('닫기')));await tester.pumpAndSettle();
     await tester.tap(find.byKey(ValueKey('day-${dayKey(DateTime.now())}')));await tester.pumpAndSettle();
     expect(find.byType(AlertDialog),findsNothing);
     store.updateDisplay((p){p.lockCreateNote=true;p.lockCreateEvent=true;});await tester.pumpAndSettle();
     expect(find.byKey(const Key('add-event')),findsNothing);
     await tester.tap(find.byKey(const Key('board-memo')));await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('memo-create')));await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextField),'잠금 메모');
     await tester.tap(find.text('저장'));await tester.pumpAndSettle();
     expect(store.notes.single.text,'잠금 메모');
