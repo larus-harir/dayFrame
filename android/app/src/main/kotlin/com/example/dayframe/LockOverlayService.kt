@@ -16,6 +16,8 @@ class LockOverlayService : Service() {
     companion object { var active: LockOverlayService? = null; private set }
     var plannerEngine: FlutterEngine? = null
         private set
+    var engineReady = false
+        private set
     var darkMode = false
         private set
     private var channel: MethodChannel? = null
@@ -43,6 +45,7 @@ class LockOverlayService : Service() {
     override fun onCreate() {
         super.onCreate()
         active = this
+        status("starting")
         val notifications = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         notifications.createNotificationChannel(NotificationChannel("lock_overlay", "잠금화면", NotificationManager.IMPORTANCE_LOW))
         val open = PendingIntent.getActivity(this, 0, Intent(this, LockPlannerActivity::class.java)
@@ -88,6 +91,8 @@ class LockOverlayService : Service() {
         channel = MethodChannel(flutter.dartExecutor.binaryMessenger, "dev.dayframe/overlay").apply {
             setMethodCallHandler { call, result ->
                 when (call.method) {
+                    "ready" -> { engineReady = true; status("ready"); result.success(null) }
+                    "loadError" -> { status("engine_error"); result.success(null) }
                     "hide" -> { dismiss(); result.success(null) }
                     "appearance" -> {
                         darkMode = call.argument<Boolean>("dark") == true
@@ -103,8 +108,9 @@ class LockOverlayService : Service() {
     }
     private fun requestAutomatic() {
         dismiss()
-        if (!Settings.canDrawOverlays(this) || !prefs.getBoolean("autoEnabled", false)) return
-        val token = display.request(locked(), interactive()) ?: return
+        if (!Settings.canDrawOverlays(this)) { status("permission_missing"); return }
+        if (!prefs.getBoolean("autoEnabled", false)) return
+        val token = display.request(locked(), interactive()) ?: run { status("not_locked"); return }
         reload()
         // Android 15 이상에서는 보이는 오버레이가 있어야 백그라운드 실행을 요청할 수 있다.
         val button = Button(this).apply {
@@ -122,12 +128,12 @@ class LockOverlayService : Service() {
         handler.postDelayed({
             if (allows(token)) launch(token)
             else if (display.expire(token)) removeLauncher()
-        }, 150)
+        }, 250)
         timeout = Runnable {
             if (LockPlannerActivity.current == null && display.expire(token)) {
                 removeLauncher(); status(if (locked() && interactive()) "blocked" else "dismissed")
             }
-        }.also { handler.postDelayed(it, 1500) }
+        }.also { handler.postDelayed(it, 4000) }
     }
     private fun launch(token: Int) {
         if (!allows(token) || launched == token) return
@@ -136,9 +142,10 @@ class LockOverlayService : Service() {
             startActivity(Intent(this, LockPlannerActivity::class.java)
                 .putExtra("automatic", true).putExtra("session", token)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP))
-        } catch (_: RuntimeException) { display.dismiss(); status("blocked") }
-        finally { removeLauncher() }
+        } catch (_: RuntimeException) { display.dismiss(); removeLauncher(); status("blocked") }
+        // 실행 승인 전에 창을 없애면 Android 15 이상의 가시성 조건을 잃는다.
     }
+    fun prepareManual() { dismiss(); reload() }
     fun opened() { timeout?.let(handler::removeCallbacks); removeLauncher(); status("opened") }
     fun closed() { launched = null; display.dismiss(); timeout?.let(handler::removeCallbacks); removeLauncher() }
     private fun removeLauncher() {

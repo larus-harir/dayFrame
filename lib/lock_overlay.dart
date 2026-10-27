@@ -15,7 +15,13 @@ Future<void> lockOverlayMain() async {
   try {
     await store.load();
     runApp(LockOverlayApp(store: store));
+    await const MethodChannel(
+      'dev.dayframe/overlay',
+    ).invokeMethod<void>('ready');
   } catch (_) {
+    await const MethodChannel(
+      'dev.dayframe/overlay',
+    ).invokeMethod<void>('loadError');
     runApp(
       const MaterialApp(
         home: Scaffold(

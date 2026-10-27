@@ -64,12 +64,15 @@ void main() {
     await store.flush();store.dispose();
   });
   testWidgets('calendar and memo stay together by using a week on a short screen', (tester) async {
-    size(tester,const Size(400,680));
+    size(tester,const Size(400,568));
     final store=PlannerStore(memoryPreferences());
     store.tasks.add(TaskItem(id:'a',title:'오늘 할 일'));
     store.notes.add(PlannerNote(id:'n',text:'첫 줄\n둘째 줄\n셋째 줄\n넷째 줄\n다섯째 줄\n여섯째 줄',createdAt:''));
     await tester.pumpWidget(MaterialApp(home:Scaffold(body:PlannerBoard(store:store,onClose:(){}))));await tester.pumpAndSettle();
     expect(find.byKey(const Key('calendar-week')),findsOneWidget);
+    await tester.tap(find.byTooltip('월간 달력'));await tester.pumpAndSettle();
+    expect(find.byType(AlertDialog),findsOneWidget);
+    await tester.tap(find.descendant(of:find.byType(AlertDialog),matching:find.text('닫기')));await tester.pumpAndSettle();
     final memo=tester.getRect(find.byKey(const Key('board-memo')));
     final calendar=tester.getRect(find.byKey(const Key('board-calendar')));
     expect(memo.top,greaterThanOrEqualTo(calendar.bottom));
@@ -116,6 +119,31 @@ void main() {
     expect(store.notes.single.id,'n');expect(store.notes.single.text,'수정 후');
     await store.flush();final other=PlannerStore(prefs);await other.load();expect(other.notes.single.text,'수정 후');
     store.dispose();other.dispose();
+  });
+  testWidgets('monthly calendar stays with verse and checklist when space permits', (tester) async {
+    size(tester,const Size(400,780));
+    final store=PlannerStore(memoryPreferences());store.tasks.add(TaskItem(id:'a',title:'할 일'));
+    store.notes.add(PlannerNote(id:'n',text:'메모',createdAt:''));
+    await tester.pumpWidget(MaterialApp(home:Scaffold(body:PlannerBoard(store:store,onClose:(){}))));await tester.pumpAndSettle();
+    expect(find.byKey(const Key('calendar-month')),findsOneWidget);
+    final bible=tester.getRect(find.byKey(const Key('board-bible')));
+    final calendar=tester.getRect(find.byKey(const Key('board-calendar')));
+    final memo=tester.getRect(find.byKey(const Key('board-memo')));
+    final tasks=tester.getRect(find.byKey(const Key('board-tasks')));
+    expect(bible.bottom,lessThanOrEqualTo(calendar.top));expect(memo.bottom,lessThanOrEqualTo(tasks.top));
+    expect(tasks.bottom,lessThanOrEqualTo(816));store.dispose();
+  });
+  testWidgets('memo deletion requires confirmation and persists', (tester) async {
+    size(tester,const Size(400,1200));
+    final prefs=memoryPreferences();final store=PlannerStore(prefs);store.notes.add(PlannerNote(id:'n',text:'삭제 대상',createdAt:''));
+    await tester.pumpWidget(MaterialApp(home:Scaffold(body:PlannerBoard(store:store,onClose:(){}))));await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('board-memo')));await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('delete-note-n')));await tester.pumpAndSettle();
+    await tester.tap(find.text('취소'));await tester.pumpAndSettle();expect(store.notes.single.id,'n');
+    await tester.tap(find.byKey(const Key('board-memo')));await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('delete-note-n')));await tester.pumpAndSettle();
+    await tester.tap(find.text('삭제'));await tester.pumpAndSettle();expect(store.notes,isEmpty);
+    await store.flush();final other=PlannerStore(prefs);await other.load();expect(other.notes,isEmpty);store.dispose();other.dispose();
   });
   testWidgets('calendar events precede notes', (tester) async {
     size(tester,const Size(400,1200));

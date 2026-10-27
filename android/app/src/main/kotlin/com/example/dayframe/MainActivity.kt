@@ -35,7 +35,8 @@ class MainActivity : FlutterActivity() {
                     "showOverlay" -> {
                         if (LockOverlayService.active == null) result.error("DISABLED", "먼저 잠금 플래너를 시작하세요.", null)
                         else {
-                            startService(Intent(this, LockOverlayService::class.java).setAction("show"))
+                            LockOverlayService.active?.prepareManual()
+                            startActivity(Intent(this, LockPlannerActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
                             result.success(null)
                         }
                     }
@@ -54,7 +55,11 @@ class MainActivity : FlutterActivity() {
                             }, 250)
                         }
                     }
-                    "displayStatus" -> result.success(prefs.getString("displayStatus", null))
+                    "displayStatus" -> {
+                        val status = prefs.getString("displayStatus", null)
+                        val service = LockOverlayService.active
+                        result.success(if (service != null && !service.engineReady && status != "engine_error") "starting" else status)
+                    }
                     "refresh" -> { LockOverlayService.active?.reload(); result.success(null) }
                     else -> result.notImplemented()
                 }

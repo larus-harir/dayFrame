@@ -8,9 +8,13 @@ class PagedBoard extends StatefulWidget {
     required this.sections,
     required this.onClose,
     this.compactSections = const {},
+    this.denseSections = const {},
+    this.keepWithNext = const {},
   });
   final Map<String, Widget> sections;
   final Map<String, Widget> compactSections;
+  final Map<String, Widget> denseSections;
+  final Map<String, String> keepWithNext;
   final VoidCallback onClose;
   @override
   State<PagedBoard> createState() => _PagedBoardState();
@@ -36,29 +40,29 @@ class _PagedBoardState extends State<PagedBoard> {
             final pages = <List<Widget>>[[]];
             var used = 0.0;
             for (final entry in widget.sections.entries) {
-              final fullHeight = heights[entry.key] ?? budget;
-              final compact = widget.compactSections[entry.key];
-              final smallHeight = heights['compact-${entry.key}'] ?? fullHeight;
-              var child = entry.value;
-              var height = fullHeight;
-              if (compact != null &&
-                  used + fullHeight > budget &&
-                  (used + smallHeight <= budget || fullHeight > budget)) {
-                child = compact;
-                height = smallHeight;
-              }
-              if (pages.last.isNotEmpty && used + height > budget) {
+              final variants = <(Widget, double)>[
+                (entry.value, heights[entry.key] ?? budget),
+                if (widget.denseSections[entry.key] case final Widget dense)
+                  (dense, heights['dense-${entry.key}'] ?? budget),
+                if (widget.compactSections[entry.key] case final Widget compact)
+                  (compact, heights['compact-${entry.key}'] ?? budget),
+              ];
+              final reserve = heights[widget.keepWithNext[entry.key]] ?? 0;
+              (Widget, double) choose(double available) => variants.firstWhere(
+                (item) => item.$2 + reserve <= available,
+                orElse: () => variants.firstWhere(
+                  (item) => item.$2 <= available,
+                  orElse: () => variants.last,
+                ),
+              );
+              var chosen = choose(budget - used);
+              if (pages.last.isNotEmpty && used + chosen.$2 > budget) {
                 pages.add([]);
                 used = 0;
-                child = fullHeight <= budget
-                    ? entry.value
-                    : compact ?? entry.value;
-                height = fullHeight <= budget
-                    ? fullHeight
-                    : compact != null
-                    ? smallHeight
-                    : fullHeight;
+                chosen = choose(budget);
               }
+              final child = chosen.$1;
+              final height = chosen.$2;
               pages.last.add(child);
               used += height;
             }
@@ -77,6 +81,8 @@ class _PagedBoardState extends State<PagedBoard> {
                       children: [
                         for (final entry in {
                           ...widget.sections,
+                          for (final item in widget.denseSections.entries)
+                            'dense-${item.key}': item.value,
                           for (final item in widget.compactSections.entries)
                             'compact-${item.key}': item.value,
                         }.entries)

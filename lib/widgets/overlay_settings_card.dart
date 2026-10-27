@@ -39,9 +39,14 @@ class _OverlaySettingsCardState extends State<OverlaySettingsCard>
         setState(() {
           permission = allowed;
           running = active;
-          error = status == 'blocked'
-              ? '자동 표시가 제한되었습니다. 알림의 열기를 이용해주세요.'
-              : null;
+          error = switch (status) {
+            'blocked' => '자동 실행이 완료되지 않았습니다. 알림의 열기 또는 아래 화면 열기를 눌러 확인해주세요.',
+            'engine_error' => '잠금화면 데이터를 읽지 못했습니다. 앱의 기록을 확인해주세요.',
+            'permission_missing' => '다른 앱 위에 표시 권한이 해제되었습니다.',
+            'not_locked' => '화면 켜짐은 감지했지만 잠금 상태가 아니어서 자동 표시를 건너뛰었습니다.',
+            'starting' => '잠금화면을 준비하고 있습니다.',
+            _ => null,
+          };
         });
       }
     } catch (_) {

@@ -28,7 +28,7 @@ class SettingsScreen extends StatelessWidget {
           title: const Text('잠금화면에서 작성 허용'),
           children: [
             SwitchListTile(
-              title: const Text('메모 등록·수정'),
+              title: const Text('메모 등록·수정·삭제'),
               value: store.display.lockCreateNote,
               onChanged: (v) =>
                   store.updateDisplay((p) => p.lockCreateNote = v),

@@ -11,10 +11,14 @@ class CompactCalendar extends StatelessWidget {
     required this.onMonth,
     required this.hasEvents,
     this.weekly = false,
+    this.dense = false,
+    this.onExpand,
     this.weekStart,
   });
   final DateTime month, selected;
   final bool weekly;
+  final bool dense;
+  final VoidCallback? onExpand;
   final DateTime? weekStart;
   final ValueChanged<DateTime> onSelect;
   final ValueChanged<int> onMonth;
@@ -35,7 +39,7 @@ class CompactCalendar extends StatelessWidget {
         );
     final today = dayKey(DateTime.now());
     final cellHeight = math.max(
-      34.0,
+      dense ? 28.0 : 34.0,
       MediaQuery.textScalerOf(context).scale(12) * 1.5 + 10,
     );
     return Column(
@@ -43,6 +47,10 @@ class CompactCalendar extends StatelessWidget {
         Row(
           children: [
             IconButton(
+              constraints: dense
+                  ? const BoxConstraints.tightFor(width: 36, height: 36)
+                  : null,
+              padding: dense ? EdgeInsets.zero : const EdgeInsets.all(8),
               tooltip: weekly ? '이전 주' : '이전 달',
               onPressed: () => onMonth(-1),
               icon: const Icon(Icons.chevron_left),
@@ -56,7 +64,22 @@ class CompactCalendar extends StatelessWidget {
                 style: Theme.of(context).textTheme.titleSmall,
               ),
             ),
+            if (onExpand != null)
+              IconButton(
+                tooltip: '월간 달력',
+                onPressed: onExpand,
+                constraints: const BoxConstraints.tightFor(
+                  width: 36,
+                  height: 36,
+                ),
+                padding: EdgeInsets.zero,
+                icon: const Icon(Icons.calendar_month, size: 18),
+              ),
             IconButton(
+              constraints: dense
+                  ? const BoxConstraints.tightFor(width: 36, height: 36)
+                  : null,
+              padding: dense ? EdgeInsets.zero : const EdgeInsets.all(8),
               tooltip: weekly ? '다음 주' : '다음 달',
               onPressed: () => onMonth(1),
               icon: const Icon(Icons.chevron_right),

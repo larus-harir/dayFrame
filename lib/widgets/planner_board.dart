@@ -5,6 +5,7 @@ import 'compact_calendar.dart';
 import 'verse_card.dart';
 import 'paged_board.dart';
 import 'editors.dart';
+import 'common.dart';
 
 class PlannerBoard extends StatefulWidget {
   const PlannerBoard({
@@ -42,7 +43,7 @@ class _PlannerBoardState extends State<PlannerBoard> {
         final events = store.eventsOn(selected);
         final notes = store.sortedNotes;
         final daily = tasks;
-        Widget calendarAndMemo(bool weekly) => Column(
+        Widget calendarAndMemo(bool weekly, {bool dense = false}) => Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             _section(
@@ -51,6 +52,8 @@ class _PlannerBoardState extends State<PlannerBoard> {
               child: CompactCalendar(
                 key: Key(weekly ? 'calendar-week' : 'calendar-month'),
                 weekly: weekly,
+                dense: dense,
+                onExpand: weekly ? () => openMonth(context) : null,
                 weekStart: week,
                 month: month,
                 selected: selected,
@@ -102,7 +105,9 @@ class _PlannerBoardState extends State<PlannerBoard> {
                 child: hidden
                     ? const Text('일정과 메모를 숨겼습니다.')
                     : ConstrainedBox(
-                        constraints: const BoxConstraints(maxHeight: 116),
+                        constraints: BoxConstraints(
+                          maxHeight: dense ? 48 : 116,
+                        ),
                         child: SingleChildScrollView(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -138,10 +143,19 @@ class _PlannerBoardState extends State<PlannerBoard> {
           padding: EdgeInsets.zero,
           child: PagedBoard(
             onClose: widget.onClose,
-            compactSections: {'calendar-memo': calendarAndMemo(true)},
+            keepWithNext: store.display.tasks
+                ? {'calendar-memo': 'tasks'}
+                : const {},
+            denseSections: {
+              'calendar-memo': calendarAndMemo(false, dense: true),
+            },
+            compactSections: {
+              'calendar-memo': calendarAndMemo(true, dense: true),
+            },
             sections: {
               if (store.display.bible)
                 'bible': VerseCard(key: const Key('board-bible'), store: store),
+              'calendar-memo': calendarAndMemo(false),
               if (store.display.tasks)
                 'tasks': _section(
                   '체크리스트',
@@ -151,7 +165,7 @@ class _PlannerBoardState extends State<PlannerBoard> {
                       : daily.isEmpty
                       ? const Text('오늘 할 일이 없습니다.')
                       : ConstrainedBox(
-                          constraints: const BoxConstraints(maxHeight: 138),
+                          constraints: const BoxConstraints(maxHeight: 104),
                           child: ListView(
                             shrinkWrap: true,
                             padding: EdgeInsets.zero,
@@ -176,7 +190,6 @@ class _PlannerBoardState extends State<PlannerBoard> {
                           ),
                         ),
                 ),
-              'calendar-memo': calendarAndMemo(false),
               if (store.display.goals && (hidden || store.goals.isEmpty))
                 'goals': _section(
                   '장기 플랜',
@@ -225,6 +238,50 @@ class _PlannerBoardState extends State<PlannerBoard> {
     );
   }
 
+  Future<void> openMonth(BuildContext context) async {
+    var displayed = DateTime(selected.year, selected.month);
+    final date = await showDialog<DateTime>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, update) => AlertDialog(
+          title: const Text('월간 달력'),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: SingleChildScrollView(
+              child: CompactCalendar(
+                month: displayed,
+                selected: selected,
+                onSelect: (date) => Navigator.pop(ctx, date),
+                onMonth: (delta) => update(
+                  () => displayed = DateTime(
+                    displayed.year,
+                    displayed.month + delta,
+                  ),
+                ),
+                hasEvents: (date) =>
+                    widget.store.display.events &&
+                    widget.store.eventsOn(date).isNotEmpty,
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('닫기'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (!mounted || date == null) return;
+    setState(() {
+      selected = date;
+      month = DateTime(date.year, date.month);
+      week = DateTime(date.year, date.month, date.day - date.weekday + 1);
+      tappedDay = null;
+    });
+  }
+
   Future<void> openMemo(BuildContext context) async {
     final store = widget.store;
     final result = await showDialog<String>(
@@ -266,11 +323,27 @@ class _PlannerBoardState extends State<PlannerBoard> {
                             contentPadding: EdgeInsets.zero,
                             title: Text(note.text),
                             trailing: canNote
-                                ? TextButton(
-                                    key: ValueKey('edit-note-${note.id}'),
-                                    onPressed: () =>
-                                        Navigator.pop(ctx, 'note:${note.id}'),
-                                    child: const Text('수정'),
+                                ? Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      TextButton(
+                                        key: ValueKey('edit-note-${note.id}'),
+                                        onPressed: () => Navigator.pop(
+                                          ctx,
+                                          'note:${note.id}',
+                                        ),
+                                        child: const Text('수정'),
+                                      ),
+                                      IconButton(
+                                        key: ValueKey('delete-note-${note.id}'),
+                                        tooltip: '삭제',
+                                        onPressed: () => Navigator.pop(
+                                          ctx,
+                                          'delete:${note.id}',
+                                        ),
+                                        icon: const Icon(Icons.delete_outline),
+                                      ),
+                                    ],
                                   )
                                 : null,
                           ),
@@ -306,6 +379,21 @@ class _PlannerBoardState extends State<PlannerBoard> {
       return;
     }
     if (widget.locked && store.display.hidePrivateDetails) return;
+    if (result.startsWith('delete:') &&
+        (!widget.locked || store.display.lockCreateNote)) {
+      for (final note in store.notes) {
+        if (note.id == result.substring(7)) {
+          if (await confirmDelete(context, '이 메모') &&
+              context.mounted &&
+              (!widget.locked ||
+                  (store.display.lockCreateNote &&
+                      !store.display.hidePrivateDetails))) {
+            store.deleteNote(note);
+          }
+          break;
+        }
+      }
+    }
     if (result.startsWith('note:') &&
         (!widget.locked || store.display.lockCreateNote)) {
       for (final note in store.notes) {
