@@ -7,10 +7,12 @@ import android.os.PowerManager
 import android.view.WindowManager
 import io.flutter.embedding.android.FlutterTextureView
 import io.flutter.embedding.android.FlutterView
+import io.flutter.plugin.platform.PlatformPlugin
 
 class LockPlannerActivity : Activity() {
     companion object { var current: LockPlannerActivity? = null; private set }
     private var view: FlutterView? = null
+    private var platformPlugin: PlatformPlugin? = null
     private var automatic = false
     private var closeOnUnlock = false
     private var token = -1
@@ -33,13 +35,32 @@ class LockPlannerActivity : Activity() {
         val service = LockOverlayService.active
         val engine = service?.plannerEngine
         if (engine == null) { finish(); return }
+        if (android.os.Build.VERSION.SDK_INT >= 30) window.setDecorFitsSystemWindows(false)
+        window.statusBarColor = android.graphics.Color.TRANSPARENT
+        window.navigationBarColor = android.graphics.Color.TRANSPARENT
+        if (android.os.Build.VERSION.SDK_INT >= 29) {
+            window.isStatusBarContrastEnforced = false
+            window.isNavigationBarContrastEnforced = false
+        }
+        applySystemBars(service.darkMode)
+        platformPlugin = PlatformPlugin(this, engine.platformChannel)
         val flutter = FlutterView(this, FlutterTextureView(this))
         flutter.attachToFlutterEngine(engine)
         view = flutter
         setContentView(flutter)
         service.opened()
     }
+    fun applySystemBars(dark: Boolean) {
+        if (android.os.Build.VERSION.SDK_INT >= 30) {
+            val mask = android.view.WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS or android.view.WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS
+            window.insetsController?.setSystemBarsAppearance(if (dark) 0 else mask, mask)
+        } else {
+            val mask = android.view.View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR or android.view.View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
+            window.decorView.systemUiVisibility = if (dark) window.decorView.systemUiVisibility and mask.inv() else window.decorView.systemUiVisibility or mask
+        }
+    }
     fun closePlanner() {
+        platformPlugin?.destroy(); platformPlugin = null
         view?.visibility = android.view.View.INVISIBLE
         view?.detachFromFlutterEngine()
         view = null
@@ -53,9 +74,11 @@ class LockPlannerActivity : Activity() {
     override fun onResume() {
         super.onResume()
         if (!allowed() || (closeOnUnlock && !locked())) { closePlanner(); return }
+        LockOverlayService.active?.let { applySystemBars(it.darkMode) }
         LockOverlayService.active?.plannerEngine?.lifecycleChannel?.appIsResumed()
     }
     override fun onDestroy() {
+        platformPlugin?.destroy(); platformPlugin = null
         view?.detachFromFlutterEngine()
         if (current === this) {
             current = null

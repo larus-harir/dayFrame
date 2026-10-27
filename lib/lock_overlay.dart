@@ -4,11 +4,13 @@ import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'core/store.dart';
+import 'core/app_theme.dart';
 import 'widgets/planner_board.dart';
 
 @pragma('vm:entry-point')
 Future<void> lockOverlayMain() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
   final store = PlannerStore(SharedPreferencesAsync());
   try {
     await store.load();
@@ -44,7 +46,19 @@ class _LockOverlayAppState extends State<LockOverlayApp> {
       }
       if (call.method == 'flush') await widget.store.flush();
     });
+    widget.store.addListener(syncAppearance);
+    syncAppearance();
     scheduleDateRefresh();
+  }
+
+  void syncAppearance() {
+    channel
+        .invokeMethod<void>('appearance', {
+          'dark': widget.store.display.darkMode,
+        })
+        .catchError((Object error) {
+          debugPrint('시스템 바 갱신 실패: $error');
+        });
   }
 
   void scheduleDateRefresh() {
@@ -64,6 +78,7 @@ class _LockOverlayAppState extends State<LockOverlayApp> {
 
   @override
   void dispose() {
+    widget.store.removeListener(syncAppearance);
     midnight?.cancel();
     channel.setMethodCallHandler(null);
     super.dispose();
@@ -79,13 +94,8 @@ class _LockOverlayAppState extends State<LockOverlayApp> {
         locale: const Locale('ko', 'KR'),
         supportedLocales: const [Locale('ko', 'KR')],
         localizationsDelegates: GlobalMaterialLocalizations.delegates,
-        theme: ThemeData(
-          useMaterial3: true,
-          brightness: store.display.darkMode
-              ? Brightness.dark
-              : Brightness.light,
-          colorSchemeSeed: const Color(0xFF58796C),
-        ),
+        theme: plannerTheme(store.display.darkMode),
+        builder: systemBarRegion,
         home: Scaffold(
           body: SafeArea(
             child: PlannerBoard(

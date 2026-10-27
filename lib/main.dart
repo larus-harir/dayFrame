@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'core/app_theme.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'core/store.dart';
@@ -10,6 +12,7 @@ import 'screens/today_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
   final store = PlannerStore(SharedPreferencesAsync());
   try {
     await store.load();
@@ -40,10 +43,6 @@ class DayframeApp extends StatelessWidget {
   Widget build(BuildContext context) => AnimatedBuilder(
     animation: store,
     builder: (context, _) {
-      final scheme = ColorScheme.fromSeed(
-        seedColor: const Color(0xFF58796C),
-        brightness: store.display.darkMode ? Brightness.dark : Brightness.light,
-      );
       return MaterialApp(
         title: 'DAYFRAME',
         debugShowCheckedModeBanner: false,
@@ -54,12 +53,8 @@ class DayframeApp extends StatelessWidget {
           GlobalWidgetsLocalizations.delegate,
           GlobalCupertinoLocalizations.delegate,
         ],
-        theme: ThemeData(
-          useMaterial3: true,
-          colorScheme: scheme,
-          scaffoldBackgroundColor: scheme.surface,
-          appBarTheme: const AppBarTheme(scrolledUnderElevation: 0),
-        ),
+        theme: plannerTheme(store.display.darkMode),
+        builder: systemBarRegion,
         home: MainShell(store: store),
       );
     },

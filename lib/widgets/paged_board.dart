@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter/gestures.dart';
 
 class PagedBoard extends StatefulWidget {
   const PagedBoard({super.key, required this.sections, required this.onClose});
@@ -62,7 +63,10 @@ class _PagedBoardState extends State<PagedBoard> {
                               }
                             },
                             child: SizedBox(
-                              width: bounds.maxWidth,
+                              width: (bounds.maxWidth - 24).clamp(
+                                0,
+                                double.infinity,
+                              ),
                               child: entry.value,
                             ),
                           ),
@@ -73,20 +77,35 @@ class _PagedBoardState extends State<PagedBoard> {
                 Column(
                   children: [
                     Expanded(
-                      child: PageView(
-                        controller: controller,
-                        key: const Key('board-pages'),
-                        onPageChanged: (value) => setState(() => page = value),
-                        children: [
-                          for (var i = 0; i < pages.length; i++)
-                            SingleChildScrollView(
-                              key: ValueKey('board-page-$i'),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: pages[i],
+                      child: MediaQuery(
+                        data: MediaQuery.of(context).copyWith(
+                          gestureSettings: const DeviceGestureSettings(
+                            touchSlop: 8,
+                          ),
+                        ),
+                        child: PageView(
+                          hitTestBehavior: HitTestBehavior.opaque,
+                          dragStartBehavior: DragStartBehavior.down,
+                          physics: const _BoardPhysics(),
+                          controller: controller,
+                          key: const Key('board-pages'),
+                          onPageChanged: (value) =>
+                              setState(() => page = value),
+                          children: [
+                            for (var i = 0; i < pages.length; i++)
+                              SingleChildScrollView(
+                                key: ValueKey('board-page-$i'),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                ),
+                                child: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  children: pages[i],
+                                ),
                               ),
-                            ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                     SizedBox(
@@ -182,4 +201,17 @@ class _MeasureBox extends RenderProxyBox {
       WidgetsBinding.instance.addPostFrameCallback((_) => onSize(measured));
     }
   }
+}
+
+class _BoardPhysics extends PageScrollPhysics {
+  const _BoardPhysics({super.parent});
+  @override
+  _BoardPhysics applyTo(ScrollPhysics? ancestor) =>
+      _BoardPhysics(parent: buildParent(ancestor));
+  @override
+  double get minFlingDistance => 12;
+  @override
+  double get minFlingVelocity => 100;
+  @override
+  double get dragStartDistanceMotionThreshold => 3;
 }

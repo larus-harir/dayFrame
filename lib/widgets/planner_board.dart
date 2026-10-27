@@ -38,7 +38,7 @@ class _PlannerBoardState extends State<PlannerBoard> {
         final daily = tasks;
         return Padding(
           key: const Key('planner-board'),
-          padding: const EdgeInsets.symmetric(horizontal: 12),
+          padding: EdgeInsets.zero,
           child: PagedBoard(
             onClose: widget.onClose,
             sections: {
@@ -86,7 +86,12 @@ class _PlannerBoardState extends State<PlannerBoard> {
                   selected: selected,
                   hasEvents: (date) =>
                       store.display.events && store.eventsOn(date).isNotEmpty,
-                  onSelect: (date) => setState(() => selected = date),
+                  onSelect: (date) {
+                    setState(() => selected = date);
+                    if (!widget.locked || store.display.lockCreateEvent) {
+                      editEventDialog(context, store, initialDate: date);
+                    }
+                  },
                   onMonth: (delta) => setState(
                     () => month = DateTime(month.year, month.month + delta),
                   ),
@@ -96,6 +101,9 @@ class _PlannerBoardState extends State<PlannerBoard> {
                 'memo': _section(
                   '${formatDate(selected)} · 메모',
                   key: const Key('board-memo'),
+                  onTap: !widget.locked || store.display.lockCreateNote
+                      ? () => editNoteDialog(context, store)
+                      : null,
                   child: hidden
                       ? const Text('일정과 메모를 숨겼습니다.')
                       : ConstrainedBox(
@@ -127,31 +135,6 @@ class _PlannerBoardState extends State<PlannerBoard> {
                             ),
                           ),
                         ),
-                ),
-              if ((!widget.locked || store.display.lockCreateEvent) ||
-                  (!widget.locked || store.display.lockCreateNote))
-                'create': Wrap(
-                  alignment: WrapAlignment.center,
-                  children: [
-                    if (!widget.locked || store.display.lockCreateEvent)
-                      TextButton.icon(
-                        key: const Key('add-event'),
-                        onPressed: () => editEventDialog(
-                          context,
-                          store,
-                          initialDate: selected,
-                        ),
-                        icon: const Icon(Icons.event_available),
-                        label: const Text('일정 등록'),
-                      ),
-                    if (!widget.locked || store.display.lockCreateNote)
-                      TextButton.icon(
-                        key: const Key('add-note'),
-                        onPressed: () => editNoteDialog(context, store),
-                        icon: const Icon(Icons.note_add_outlined),
-                        label: const Text('메모 추가'),
-                      ),
-                  ],
                 ),
               if (store.display.goals && (hidden || store.goals.isEmpty))
                 'goals': _section(
@@ -201,19 +184,27 @@ class _PlannerBoardState extends State<PlannerBoard> {
     );
   }
 
-  Widget _section(String title, {required Key key, required Widget child}) =>
-      Card(
-        key: key,
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(title, style: Theme.of(context).textTheme.labelLarge),
-              const SizedBox(height: 4),
-              child,
-            ],
-          ),
+  Widget _section(
+    String title, {
+    required Key key,
+    required Widget child,
+    VoidCallback? onTap,
+  }) => Card(
+    key: key,
+    clipBehavior: Clip.antiAlias,
+    child: InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(title, style: Theme.of(context).textTheme.labelLarge),
+            const SizedBox(height: 4),
+            child,
+          ],
         ),
-      );
+      ),
+    ),
+  );
 }

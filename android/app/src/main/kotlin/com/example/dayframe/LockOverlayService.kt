@@ -16,6 +16,8 @@ class LockOverlayService : Service() {
     companion object { var active: LockOverlayService? = null; private set }
     var plannerEngine: FlutterEngine? = null
         private set
+    var darkMode = false
+        private set
     private var channel: MethodChannel? = null
     private var launcher: Button? = null
     private val display = LockDisplayState()
@@ -85,8 +87,15 @@ class LockOverlayService : Service() {
         plannerEngine = flutter
         channel = MethodChannel(flutter.dartExecutor.binaryMessenger, "dev.dayframe/overlay").apply {
             setMethodCallHandler { call, result ->
-                if (call.method == "hide") { dismiss(); result.success(null) }
-                else result.notImplemented()
+                when (call.method) {
+                    "hide" -> { dismiss(); result.success(null) }
+                    "appearance" -> {
+                        darkMode = call.argument<Boolean>("dark") == true
+                        LockPlannerActivity.current?.applySystemBars(darkMode)
+                        result.success(null)
+                    }
+                    else -> result.notImplemented()
+                }
             }
         }
         flutter.dartExecutor.executeDartEntrypoint(DartExecutor.DartEntrypoint(
