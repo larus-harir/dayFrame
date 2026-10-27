@@ -20,6 +20,8 @@ class LockOverlayService : Service() {
         private set
     var darkMode = false
         private set
+    var surfaceColor = 0xFFF6FAF7.toInt()
+        private set
     private var channel: MethodChannel? = null
     private var launcher: Button? = null
     private val display = LockDisplayState()
@@ -96,6 +98,8 @@ class LockOverlayService : Service() {
                     "hide" -> { dismiss(); result.success(null) }
                     "appearance" -> {
                         darkMode = call.argument<Boolean>("dark") == true
+                        surfaceColor = call.argument<Number>("surfaceColor")?.toInt()
+                            ?: if (darkMode) 0xFF101512.toInt() else 0xFFF6FAF7.toInt()
                         LockPlannerActivity.current?.applySystemBars(darkMode)
                         result.success(null)
                     }
@@ -119,7 +123,7 @@ class LockOverlayService : Service() {
         }
         val params = WindowManager.LayoutParams((180 * resources.displayMetrics.density).toInt(),
             WindowManager.LayoutParams.WRAP_CONTENT, WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_SECURE, PixelFormat.TRANSLUCENT)
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE, PixelFormat.TRANSLUCENT)
         params.gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
         params.y = (72 * resources.displayMetrics.density).toInt()
         try { windows.addView(button, params); launcher = button }

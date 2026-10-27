@@ -61,6 +61,9 @@ class _LockOverlayAppState extends State<LockOverlayApp> {
     channel
         .invokeMethod<void>('appearance', {
           'dark': widget.store.display.darkMode,
+          'surfaceColor': plannerTheme(
+            widget.store.display.darkMode,
+          ).colorScheme.surface.toARGB32(),
         })
         .catchError((Object error) {
           debugPrint('시스템 바 갱신 실패: $error');

@@ -5,6 +5,9 @@ import android.app.KeyguardManager
 import android.os.Bundle
 import android.os.PowerManager
 import android.view.WindowManager
+import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
+import androidx.core.view.WindowCompat
 import io.flutter.embedding.android.FlutterTextureView
 import io.flutter.embedding.android.FlutterView
 import io.flutter.plugin.platform.PlatformPlugin
@@ -58,8 +61,6 @@ class LockPlannerActivity : Activity() {
             )
         }
 
-        window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
-
         val service = LockOverlayService.active
         val engine = service?.plannerEngine
 
@@ -68,9 +69,7 @@ class LockPlannerActivity : Activity() {
             return
         }
 
-        if (android.os.Build.VERSION.SDK_INT >= 30) {
-            window.setDecorFitsSystemWindows(false)
-        }
+        WindowCompat.setDecorFitsSystemWindows(window, false)
 
         window.statusBarColor = android.graphics.Color.TRANSPARENT
         window.navigationBarColor = android.graphics.Color.TRANSPARENT
@@ -101,28 +100,28 @@ class LockPlannerActivity : Activity() {
 
     fun applySystemBars(dark: Boolean) {
         val decor = window.decorView
-
-        if (android.os.Build.VERSION.SDK_INT >= 30) {
-            val mask =
-                android.view.WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS or
-                android.view.WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS
-
-            decor.windowInsetsController?.setSystemBarsAppearance(
-                if (dark) 0 else mask,
-                mask
-            )
-        } else {
-            val mask =
-                android.view.View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR or
-                android.view.View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
-
-            decor.systemUiVisibility =
-                if (dark) {
-                    decor.systemUiVisibility and mask.inv()
-                } else {
-                    decor.systemUiVisibility or mask
-                }
+        val surface = LockOverlayService.active?.surfaceColor
+            ?: if (dark) 0xFF101512.toInt() else 0xFFF6FAF7.toInt()
+        window.setBackgroundDrawable(ColorDrawable(surface))
+        view?.setBackgroundColor(surface)
+        window.statusBarColor = Color.TRANSPARENT
+        window.navigationBarColor = Color.TRANSPARENT
+        if (android.os.Build.VERSION.SDK_INT >= 28) {
+            window.navigationBarDividerColor = Color.TRANSPARENT
         }
+        if (android.os.Build.VERSION.SDK_INT >= 29) {
+            window.isStatusBarContrastEnforced = false
+            window.isNavigationBarContrastEnforced = false
+        }
+        WindowCompat.getInsetsController(window, decor).apply {
+            isAppearanceLightStatusBars = !dark
+            isAppearanceLightNavigationBars = !dark
+        }
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus) LockOverlayService.active?.let { applySystemBars(it.darkMode) }
     }
 
     fun closePlanner() {
