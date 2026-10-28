@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -41,20 +40,22 @@ class LockOverlayApp extends StatefulWidget {
 
 class _LockOverlayAppState extends State<LockOverlayApp> {
   static const channel = MethodChannel('dev.dayframe/overlay');
-  Timer? midnight;
   @override
   void initState() {
     super.initState();
     channel.setMethodCallHandler((call) async {
       if (call.method == 'reload') {
         await widget.store.flush();
-        await widget.store.load();
+        final arguments = call.arguments as Map?;
+        await widget.store.load(
+          startBibleSession: arguments?['startBibleSession'] == true,
+        );
+        widget.store.refreshBibleDay();
       }
       if (call.method == 'flush') await widget.store.flush();
     });
     widget.store.addListener(syncAppearance);
     syncAppearance();
-    scheduleDateRefresh();
   }
 
   void syncAppearance() {
@@ -70,25 +71,9 @@ class _LockOverlayAppState extends State<LockOverlayApp> {
         });
   }
 
-  void scheduleDateRefresh() {
-    final now = DateTime.now();
-    midnight = Timer(
-      DateTime(now.year, now.month, now.day + 1).difference(now),
-      () async {
-        await widget.store.flush();
-        await widget.store.load();
-        if (mounted) {
-          setState(() {});
-          scheduleDateRefresh();
-        }
-      },
-    );
-  }
-
   @override
   void dispose() {
     widget.store.removeListener(syncAppearance);
-    midnight?.cancel();
     channel.setMethodCallHandler(null);
     super.dispose();
   }

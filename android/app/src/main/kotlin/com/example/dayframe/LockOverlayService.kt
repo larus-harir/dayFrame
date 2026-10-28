@@ -93,7 +93,12 @@ class LockOverlayService : Service() {
         channel = MethodChannel(flutter.dartExecutor.binaryMessenger, "dev.dayframe/overlay").apply {
             setMethodCallHandler { call, result ->
                 when (call.method) {
-                    "ready" -> { engineReady = true; status("ready"); result.success(null) }
+                    "ready" -> {
+                        engineReady = true
+                        status("ready")
+                        if (LockPlannerActivity.current != null) reload(startBibleSession = true)
+                        result.success(null)
+                    }
                     "loadError" -> { status("engine_error"); result.success(null) }
                     "hide" -> { dismiss(); result.success(null) }
                     "appearance" -> {
@@ -150,7 +155,12 @@ class LockOverlayService : Service() {
         // 실행 승인 전에 창을 없애면 Android 15 이상의 가시성 조건을 잃는다.
     }
     fun prepareManual() { dismiss(); reload() }
-    fun opened() { timeout?.let(handler::removeCallbacks); removeLauncher(); status("opened") }
+    fun opened() {
+        timeout?.let(handler::removeCallbacks)
+        removeLauncher()
+        status("opened")
+        if (engineReady) reload(startBibleSession = true)
+    }
     fun closed() { launched = null; display.dismiss(); timeout?.let(handler::removeCallbacks); removeLauncher() }
     private fun removeLauncher() {
         launcher?.let { try { windows.removeViewImmediate(it) } catch (_: IllegalArgumentException) {} }
@@ -160,7 +170,9 @@ class LockOverlayService : Service() {
         closed()
         LockPlannerActivity.current?.closePlanner()
     }
-    fun reload() { channel?.invokeMethod("reload", null) }
+    fun reload(startBibleSession: Boolean = false) {
+        channel?.invokeMethod("reload", mapOf("startBibleSession" to startBibleSession))
+    }
     fun flushAndHide(done: () -> Unit) {
         // 저장 응답은 창을 다시 닫지 않는다. 화면을 다시 켠 요청과 섞일 수 있다.
         dismiss()

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../core/store.dart';
 import '../widgets/overlay_settings_card.dart';
-import 'bible_screen.dart';
+import 'bible_journal_screen.dart';
 import 'section_order_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
@@ -28,14 +28,16 @@ class SettingsScreen extends StatelessWidget {
         ),
         ListTile(
           leading: const Icon(Icons.menu_book_outlined),
-          title: const Text('성경 읽기·기록'),
+          title: const Text('말씀과 기록'),
           subtitle: Text(
-            '${store.totalReadCount} / ${store.bibleReadingTotal}절 · ${(store.totalReadCount / store.bibleReadingTotal * 100).toStringAsFixed(1)}%',
+            '${store.hasReadBibleToday ? '오늘 읽기 완료' : '하루 한 절'} · 연속 ${store.bibleReadingStreak}일',
           ),
           trailing: const Icon(Icons.chevron_right),
           onTap: () => Navigator.push(
             context,
-            MaterialPageRoute<void>(builder: (_) => BibleScreen(store: store)),
+            MaterialPageRoute<void>(
+              builder: (_) => BibleJournalScreen(store: store),
+            ),
           ),
         ),
         ListTile(

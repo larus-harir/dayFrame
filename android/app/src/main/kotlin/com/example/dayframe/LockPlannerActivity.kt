@@ -66,7 +66,6 @@ class LockPlannerActivity : Activity() {
             return
         }
 
-        // Flutter 화면 생성
         platformPlugin = PlatformPlugin(this, engine.platformChannel)
 
         val flutter = FlutterView(this, FlutterTextureView(this))
@@ -75,7 +74,6 @@ class LockPlannerActivity : Activity() {
         view = flutter
         setContentView(flutter)
 
-        // 화면 생성 이후 시스템 바 적용
         window.decorView.post {
             if (!isFinishing && !isDestroyed) {
                 applySystemBars(service.darkMode)
@@ -123,7 +121,6 @@ class LockPlannerActivity : Activity() {
             return
         }
 
-        // 시스템 바 재적용
         LockOverlayService.active?.let { service ->
             window.decorView.post {
                 if (!isFinishing && !isDestroyed) {

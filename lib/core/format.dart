@@ -1,6 +1,7 @@
 const koreanWeekdays = ['월', '화', '수', '목', '금', '토', '일'];
 
-DateTime dateOnly(DateTime value) => DateTime(value.year, value.month, value.day);
+DateTime dateOnly(DateTime value) =>
+    DateTime(value.year, value.month, value.day);
 String dayKey(DateTime date) =>
     '${date.year.toString().padLeft(4, '0')}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
 String formatDate(DateTime value) =>

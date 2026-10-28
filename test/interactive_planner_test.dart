@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:dayframe/core/store.dart';
 import 'package:dayframe/core/models.dart';
-import 'package:dayframe/widgets/verse_card.dart';
+import 'package:dayframe/widgets/daily_verse_card.dart';
 import 'package:dayframe/lock_overlay.dart';
 import 'package:dayframe/screens/today_screen.dart';
 import 'test_support.dart';
@@ -56,7 +56,7 @@ void main() {
           home: Scaffold(
             body: AnimatedBuilder(
               animation: store,
-              builder: (_, _) => VerseCard(store: store),
+              builder: (_, _) => DailyVerseCard(store: store),
             ),
           ),
         ),
@@ -74,11 +74,9 @@ void main() {
       await tester.tap(find.byKey(const Key('verse-read')));
       await tester.pumpAndSettle();
       expect(store.totalReadCount, 1);
-      expect(store.selectedVerse.verse, 2);
-      await tester.tap(find.byTooltip('이전 절'));
-      await tester.pumpAndSettle();
-      expect(find.text('읽음 취소'), findsOneWidget);
-      await tester.tap(find.byKey(const Key('verse-read')));
+      expect(store.selectedVerse.verse, 1);
+      expect(find.text('오늘 읽기 완료'), findsOneWidget);
+      await tester.tap(find.byTooltip('읽음 취소'));
       await tester.pumpAndSettle();
       expect(store.totalReadCount, 0);
       await store.flush();

@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/services.dart';
-import 'bible_data.dart';
+import 'reference.dart';
 
 class BiblePassage {
   const BiblePassage(this.first, this.last, this.text);
@@ -21,18 +21,14 @@ class BibleContent {
   const BibleContent({
     this.verses = const {},
     this.passages = const {},
-    this.missing = const {},
-    this.source = '',
-    this.sourceUrl = '',
+    this.excluded = const {},
   });
   final Map<String, String> verses;
   final Map<String, BiblePassage> passages;
-  final Set<String> missing;
-  final String source;
-  final String sourceUrl;
+  final Set<String> excluded;
   static Future<BibleContent>? _bundled;
   static Future<BibleContent> load() => _bundled ??= rootBundle
-      .loadString('assets/bible/gae.json')
+      .loadString('assets/bible/korean_revised.json')
       .then(BibleContent.parse);
 
   BiblePassage? passageFor(BibleVerse verse) => passages[verse.key];
@@ -41,12 +37,35 @@ class BibleContent {
   List<String> keysFor(BibleVerse verse) =>
       passages.isEmpty ? [verse.key] : passageFor(verse)?.keys.toList() ?? [];
   int adjacentPage(BibleVerse verse, int direction) {
+    if (direction == 0) return verse.index;
     final passage = passageFor(verse);
-    return ((direction < 0
-                ? passage?.first.index ?? verse.index
-                : passage?.last.index ?? verse.index) +
-            direction)
-        .clamp(0, totalBibleVerses - 1);
+    var index = direction < 0
+        ? passage?.first.index ?? verse.index
+        : passage?.last.index ?? verse.index;
+    do {
+      final next = index + direction.sign;
+      if (next < 0 || next >= totalBibleVerses) return index;
+      index = next;
+    } while (excluded.contains(bibleVerseAt(index).key));
+    return index;
+  }
+
+  int availablePage(int index) {
+    final verse = bibleVerseAt(index);
+    return excluded.contains(verse.key) ? adjacentPage(verse, 1) : verse.index;
+  }
+
+  Iterable<BiblePassage> chapterPassages(int book, int chapter) sync* {
+    for (var v = 1; v <= bibleVerseCounts[book][chapter - 1]; v++) {
+      final verse = bibleVerseAt(bibleVerseIndex(book, chapter, v));
+      if (excluded.contains(verse.key)) continue;
+      final passage = passageFor(verse);
+      if (passage == null) {
+        yield BiblePassage(verse, verse, '');
+      } else if (passage.first.verse == v) {
+        yield passage;
+      }
+    }
   }
 
   int countForChapter(int book, int chapter) => passages.isEmpty
@@ -68,7 +87,7 @@ class BibleContent {
     }
     final texts = Map<String, String>.from(data['verses'] as Map);
     final ranges = Map<String, dynamic>.from(data['ranges'] as Map);
-    final declaredMissing = (metadata['missing'] as List)
+    final declaredMissing = (metadata['excluded'] as List)
         .cast<String>()
         .toSet();
     final verses = <String, String>{};
@@ -115,9 +134,7 @@ class BibleContent {
     return BibleContent(
       verses: Map.unmodifiable(verses),
       passages: Map.unmodifiable(passages),
-      missing: Set.unmodifiable(actualMissing),
-      source: metadata['source'] as String,
-      sourceUrl: metadata['sourceUrl'] as String,
+      excluded: Set.unmodifiable(actualMissing),
     );
   }
 }

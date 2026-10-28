@@ -1,7 +1,6 @@
 import 'verse_counts.dart';
 export 'verse_counts.dart';
 
-// 개신교 66권의 장 수.
 const bibleBookNames = <String>[
   '창세기',
   '출애굽기',
@@ -178,7 +177,6 @@ class BibleVerse {
   String get key => '$book:$chapter:$verse';
 }
 
-// 절 위치는 한 번만 계산해 둔다.
 final _verses = <BibleVerse>[
   for (var b = 0, index = 0; b < bibleVerseCounts.length; b++)
     for (var c = 0; c < bibleVerseCounts[b].length; c++)
@@ -213,15 +211,8 @@ int bibleVerseIndex(int book, int chapter, [int verse = 1]) {
   return index;
 }
 
-BibleVerse? bibleVerseFromKey(String key) {
-  final parts = key.split(':').map(int.tryParse).toList();
-  if (parts.length != 3 || parts.any((part) => part == null)) return null;
-  try {
-    return bibleVerseAt(bibleVerseIndex(parts[0]!, parts[1]!, parts[2]!));
-  } on RangeError {
-    return null;
-  }
-}
+final _versesByKey = {for (final verse in _verses) verse.key: verse};
+BibleVerse? bibleVerseFromKey(String key) => _versesByKey[key];
 
 String legacyBibleVerseKeyAt(int index) {
   var remaining = index.clamp(0, 31101);

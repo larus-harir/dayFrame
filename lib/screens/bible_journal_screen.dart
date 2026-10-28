@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
-import '../core/bible_data.dart';
+import '../core/bible/reference.dart';
 import '../core/store.dart';
 import '../widgets/common.dart';
 
-class BibleScreen extends StatefulWidget {
-  const BibleScreen({super.key, required this.store});
+class BibleJournalScreen extends StatefulWidget {
+  const BibleJournalScreen({super.key, required this.store});
   final PlannerStore store;
   @override
-  State<BibleScreen> createState() => _BibleScreenState();
+  State<BibleJournalScreen> createState() => _BibleJournalScreenState();
 }
 
-class _BibleScreenState extends State<BibleScreen>
+class _BibleJournalScreenState extends State<BibleJournalScreen>
     with SingleTickerProviderStateMixin {
   late final TabController tabs = TabController(length: 3, vsync: this);
   late final TextEditingController memo;
@@ -39,7 +39,9 @@ class _BibleScreenState extends State<BibleScreen>
 
   void review(int? page) {
     FocusScope.of(context).unfocus();
-    reviewPage = page;
+    reviewPage = page == null
+        ? null
+        : widget.store.bibleContent.availablePage(page);
     refresh();
     tabs.animateTo(0);
   }
@@ -55,12 +57,12 @@ class _BibleScreenState extends State<BibleScreen>
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(
-      title: const Text('성경 읽기'),
+      title: const Text('말씀과 기록'),
       bottom: TabBar(
         controller: tabs,
         onTap: (_) => FocusScope.of(context).unfocus(),
         tabs: const [
-          Tab(text: '읽기'),
+          Tab(text: '오늘의 말씀'),
           Tab(text: '진행도'),
           Tab(text: '기록'),
         ],
@@ -77,10 +79,16 @@ class _BibleScreenState extends State<BibleScreen>
     final location = verse;
     final text = store.bibleContent.verses[location.key];
     final read = store.isBibleRead(location);
+    final completed = store.isBibleReadToday(location);
     return ListView(
       key: const PageStorageKey('bible-reader'),
       padding: const EdgeInsets.all(16),
       children: [
+        if (reviewPage == null)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: Text(store.hasReadBibleToday ? '오늘 읽기 완료' : '하루 한 절'),
+          ),
         if (reviewPage != null)
           ListTile(
             contentPadding: EdgeInsets.zero,
@@ -88,7 +96,7 @@ class _BibleScreenState extends State<BibleScreen>
             subtitle: const Text('현재 읽던 위치는 그대로 유지됩니다.'),
             trailing: TextButton(
               onPressed: () => review(null),
-              child: const Text('이어서 읽기'),
+              child: const Text('오늘의 말씀으로'),
             ),
           ),
         Panel(
@@ -124,7 +132,7 @@ class _BibleScreenState extends State<BibleScreen>
                   ).textTheme.titleMedium?.copyWith(height: 1.7),
                 )
               else
-                const Text('첨부 원본에 이 절의 본문이 없습니다. 내용을 임의로 채우지 않았습니다.'),
+                const Text('본문을 불러올 수 없습니다.'),
               const SizedBox(height: 12),
               Text(
                 '개역개정 · ${read ? '읽음' : '아직 읽지 않음'}',
@@ -156,31 +164,33 @@ class _BibleScreenState extends State<BibleScreen>
                 ],
               ),
               const SizedBox(height: 8),
-              FilledButton(
+              FilledButton.icon(
                 key: const Key('bible-reader-read'),
-                onPressed: () {
-                  if (store.bibleContent.missing.contains(location.key)) {
-                    if (reviewPage == null) {
-                      store.moveBibleVerse(1);
-                    } else {
-                      review(store.bibleContent.adjacentPage(location, 1));
-                    }
-                  } else if (reviewPage == null) {
-                    store.toggleBibleRead();
-                  } else {
-                    store.toggleReviewedBibleRead(location);
-                  }
-                },
-                child: Text(
-                  store.bibleContent.missing.contains(location.key)
-                      ? '다음 절'
-                      : read
+                onPressed: reviewPage == null
+                    ? completed
+                          ? null
+                          : store.toggleBibleRead
+                    : () => store.toggleReviewedBibleRead(location),
+                icon: Icon(
+                  completed ? Icons.check_circle_outline : Icons.check,
+                ),
+                label: Text(
+                  reviewPage == null
+                      ? completed
+                            ? '오늘 읽기 완료'
+                            : '읽음'
+                      : completed
                       ? '읽음 취소'
-                      : reviewPage == null
-                      ? '읽음 · 다음 절'
+                      : read
+                      ? '오늘 읽음'
                       : '읽음 표시',
                 ),
               ),
+              if (reviewPage == null && completed)
+                TextButton(
+                  onPressed: store.toggleBibleRead,
+                  child: const Text('읽음 취소'),
+                ),
             ],
           ),
         ),
@@ -227,7 +237,10 @@ class _BibleScreenState extends State<BibleScreen>
                     v <= bibleVerseCounts[location.book][location.chapter - 1];
                     v++
                   )
-                    DropdownMenuItem(value: v, child: Text('$v절')),
+                    if (!store.bibleContent.excluded.contains(
+                      '${location.book}:${location.chapter}:$v',
+                    ))
+                      DropdownMenuItem(value: v, child: Text('$v절')),
                 ],
                 onChanged: (v) {
                   if (v != null) {
@@ -262,73 +275,31 @@ class _BibleScreenState extends State<BibleScreen>
           key: const PageStorageKey('bible-chapter-full'),
           title: const Text('이 장 전체 읽기'),
           children: [
-            for (
-              var v = 1;
-              v <= bibleVerseCounts[location.book][location.chapter - 1];
-              v++
-            )
-              if (store.bibleContent
-                          .passageFor(
-                            bibleVerseAt(
-                              bibleVerseIndex(
-                                location.book,
-                                location.chapter,
-                                v,
-                              ),
-                            ),
-                          )
-                          ?.first
-                          .verse ==
-                      v ||
-                  store.bibleContent.passageFor(
-                        bibleVerseAt(
-                          bibleVerseIndex(location.book, location.chapter, v),
-                        ),
-                      ) ==
-                      null)
-                ListTile(
-                  dense: true,
-                  key: ValueKey(
-                    'chapter-verse-${location.book}-${location.chapter}-$v',
-                  ),
-                  selected:
-                      store.bibleContent
-                          .passageFor(location)
-                          ?.keys
-                          .contains(
-                            '${location.book}:${location.chapter}:$v',
-                          ) ??
-                      v == location.verse,
-                  title: Text(
-                    '${store.bibleContent.referenceFor(bibleVerseAt(bibleVerseIndex(location.book, location.chapter, v)))}\n${store.bibleContent.verses['${location.book}:${location.chapter}:$v'] ?? '원본에 본문이 없는 절'}',
-                  ),
-                  trailing:
-                      store.isBibleRead(
-                        bibleVerseAt(
-                          bibleVerseIndex(location.book, location.chapter, v),
-                        ),
-                      )
-                      ? const Icon(Icons.check, size: 16)
-                      : null,
-                  onTap: () => review(
-                    bibleVerseIndex(location.book, location.chapter, v),
-                  ),
+            for (final passage in store.bibleContent.chapterPassages(
+              location.book,
+              location.chapter,
+            ))
+              ListTile(
+                dense: true,
+                key: ValueKey(
+                  'chapter-verse-${passage.first.book}-${passage.first.chapter}-${passage.first.verse}',
                 ),
+                selected: passage.keys.contains(location.key),
+                title: Text('${passage.reference}\n${passage.text}'),
+                trailing: store.isBibleRead(passage.first)
+                    ? const Icon(Icons.check, size: 16)
+                    : null,
+                onTap: () => review(passage.first.index),
+              ),
           ],
         ),
         ExpansionTile(
           key: const PageStorageKey('bible-source'),
           title: const Text('본문 안내'),
-          children: [
-            const ListTile(
-              title: Text('개역개정 · 앱에 포함된 본문'),
-              subtitle: Text(
-                '합절은 원문 그대로 표시합니다. 사도행전 24:7은 첨부 원본에 없어 별도로 표시합니다.',
-              ),
-            ),
-            ListTile(
-              title: Text(store.bibleContent.source),
-              subtitle: SelectableText(store.bibleContent.sourceUrl),
+          children: const [
+            Padding(
+              padding: EdgeInsets.fromLTRB(16, 0, 16, 16),
+              child: Text('개역개정 본문을 오프라인으로 제공합니다. 합절은 묶어서 표시합니다.'),
             ),
           ],
         ),
@@ -357,6 +328,24 @@ class _BibleScreenState extends State<BibleScreen>
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
+        Panel(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                store.hasReadBibleToday
+                    ? '오늘 읽기 완료 · ${store.todayReadCount}절'
+                    : '오늘은 아직 읽기 전이에요',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                '연속 ${store.bibleReadingStreak}일 · 읽은 날 ${store.bibleReadDayCount}일',
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
         Text(
           '${(store.totalReadCount / store.bibleReadingTotal * 100).toStringAsFixed(1)}% · ${store.totalReadCount} / ${store.bibleReadingTotal}절',
         ),
@@ -368,10 +357,9 @@ class _BibleScreenState extends State<BibleScreen>
         ),
         TextButton(
           onPressed: () {
-            review(null);
-            store.goToNextUnreadBible();
+            review(store.nextUnreadPage);
           },
-          child: const Text('다음 미완료 절로'),
+          child: const Text('이어서 볼 구절'),
         ),
         for (var b = 0; b < bibleBookNames.length; b++)
           ExpansionTile(
@@ -411,23 +399,21 @@ class _BibleScreenState extends State<BibleScreen>
 
   Widget history() {
     final store = widget.store;
+    final records = store.bibleReadHistory;
     final keys =
-        (historyFilter == 0
-                ? store.bibleReadDates.keys
-                : historyFilter == 1
-                ? store.bibleNotes.keys
-                : store.bibleBookmarks)
-            .where((key) => bibleVerseFromKey(key) != null)
-            .toList();
-    keys.sort((a, b) {
-      if (historyFilter == 0) {
-        final date = store.bibleReadDates[b]!.compareTo(
-          store.bibleReadDates[a]!,
-        );
-        if (date != 0) return date;
-      }
-      return bibleVerseFromKey(a)!.index.compareTo(bibleVerseFromKey(b)!.index);
-    });
+        (historyFilter == 1 ? store.bibleNotes.keys : store.bibleBookmarks)
+            .where(
+              (key) =>
+                  bibleVerseFromKey(key) != null &&
+                  !store.bibleContent.excluded.contains(key),
+            )
+            .toList()
+          ..sort(
+            (a, b) => bibleVerseFromKey(
+              a,
+            )!.index.compareTo(bibleVerseFromKey(b)!.index),
+          );
+    final length = historyFilter == 0 ? records.length : keys.length;
     return Column(
       children: [
         Padding(
@@ -445,22 +431,26 @@ class _BibleScreenState extends State<BibleScreen>
           ),
         ),
         Expanded(
-          child: keys.isEmpty
+          child: length == 0
               ? const Center(child: Text('아직 기록이 없습니다.'))
               : ListView.builder(
-                  itemCount: keys.length,
+                  itemCount: length,
                   itemBuilder: (context, index) {
-                    final key = keys[index];
-                    final item = bibleVerseFromKey(key)!;
+                    final record = historyFilter == 0 ? records[index] : null;
+                    final key = record?.verse.key ?? keys[index];
+                    final item = record?.verse ?? bibleVerseFromKey(key)!;
                     return ListTile(
-                      key: ValueKey('bible-history-$key'),
-                      title: Text(item.reference),
+                      key: ValueKey(
+                        record == null
+                            ? 'bible-history-$key'
+                            : 'bible-history-$key-${record.date}',
+                      ),
+                      title: Text(store.bibleContent.referenceFor(item)),
                       subtitle: Text(
-                        historyFilter == 1
-                            ? store.bibleNotes[key]!
-                            : historyFilter == 0
-                            ? store.bibleReadDates[key]!
-                            : '북마크',
+                        record?.date ??
+                            (historyFilter == 1
+                                ? store.bibleNotes[key]!
+                                : '북마크'),
                         maxLines: 3,
                         overflow: TextOverflow.ellipsis,
                       ),

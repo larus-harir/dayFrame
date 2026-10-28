@@ -164,6 +164,7 @@ class DisplayPreferences {
   }.toList();
 
   bool bible = true;
+  bool bibleCollapsed = false;
   bool tasks = true;
   bool goals = true;
   bool notes = true;
@@ -178,6 +179,7 @@ class DisplayPreferences {
     'lockCreateNote': lockCreateNote,
     'lockCreateEvent': lockCreateEvent,
     'bible': bible,
+    'bibleCollapsed': bibleCollapsed,
     'tasks': tasks,
     'goals': goals,
     'notes': notes,
@@ -189,6 +191,7 @@ class DisplayPreferences {
   factory DisplayPreferences.fromJson(Map<String, dynamic> json) {
     final value = DisplayPreferences();
     value.bible = json['bible'] != false;
+    value.bibleCollapsed = json['bibleCollapsed'] == true;
     value.tasks = json['tasks'] != false;
     value.goals = json['goals'] != false;
     value.notes = json['notes'] != false;

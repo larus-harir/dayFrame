@@ -21,9 +21,9 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--original', type=Path)
     args = parser.parse_args()
-    data = json.loads((ROOT / 'assets/bible/gae.json').read_text(), object_pairs_hook=unique_pairs)
+    data = json.loads((ROOT / 'assets/bible/korean_revised.json').read_text(), object_pairs_hook=unique_pairs)
     meta = data['metadata']
-    text = (ROOT / 'lib/core/verse_counts.dart').read_text()
+    text = (ROOT / 'lib/core/bible/verse_counts.dart').read_text()
     table_start = text.index('[', text.index('const legacyKjvVerseCounts'))
     table_end = text.index('];', table_start)
     counts = ast.literal_eval(text[table_start:table_end + 1])
@@ -44,7 +44,7 @@ def main():
             assert ref not in covered, ref
             covered.add(ref)
     assert covered <= expected
-    assert expected - covered == set(meta['missing']) == {'43:24:7'}
+    assert expected - covered == set(meta['excluded']) == {'43:24:7'}
     assert len(data['verses']) == meta['passages'] == 31088
     assert len(covered) == meta['coveredPositions'] == 31101
     assert len(data['ranges']) == 11

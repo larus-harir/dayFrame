@@ -1,14 +1,14 @@
 import 'dart:convert';
-import 'package:dayframe/core/bible_content.dart';
-import 'package:dayframe/core/bible_data.dart';
+import 'package:dayframe/core/bible/content.dart';
+import 'package:dayframe/core/bible/reference.dart';
 import 'package:dayframe/core/store.dart';
 import 'package:dayframe/lock_overlay.dart';
-import 'package:dayframe/screens/bible_screen.dart';
-import 'package:dayframe/widgets/verse_card.dart';
+import 'package:dayframe/screens/bible_journal_screen.dart';
+import 'package:dayframe/widgets/daily_verse_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'test_support.dart';
+import '../test_support.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -17,14 +17,14 @@ void main() {
     () async {
       final content = await BibleContent.load();
       expect(content.verses.length, 31101);
-      expect(content.missing, {'43:24:7'});
+      expect(content.excluded, {'43:24:7'});
       final unique = content.passages.values.toSet();
       expect(unique.length, 31088);
       expect(unique.where((p) => p.first.index != p.last.index).length, 11);
       for (var i = 0; i < totalBibleVerses; i++) {
         final v = bibleVerseAt(i);
         expect(
-          content.verses.containsKey(v.key) || content.missing.contains(v.key),
+          content.verses.containsKey(v.key) || content.excluded.contains(v.key),
           isTrue,
           reason: v.key,
         );
@@ -51,7 +51,7 @@ void main() {
     },
   );
   test(
-    'range read and undo update every covered verse and navigate once',
+    'range read stays in place and navigation skips its continuation',
     () async {
       final store = PlannerStore(memoryPreferences());
       await store.load();
@@ -59,6 +59,8 @@ void main() {
       store.toggleBibleRead();
       expect(store.bibleReadDates.keys, containsAll(['4:6:18', '4:6:19']));
       expect(store.totalReadCount, 2);
+      expect(store.selectedVerse.key, '4:6:18');
+      store.moveBibleVerse(1);
       expect(store.selectedVerse.key, '4:6:20');
       store.moveBibleVerse(-1);
       expect(store.selectedVerse.key, '4:6:19');
@@ -82,7 +84,7 @@ void main() {
       expect(store.isBibleRead(store.selectedVerse), isFalse);
       store.toggleBibleRead();
       expect(store.totalReadCount, 2);
-      expect(store.selectedVerse.key, '4:6:20');
+      expect(store.selectedVerse.key, '4:6:19');
       await store.flush();
       store.dispose();
     },
@@ -94,7 +96,6 @@ void main() {
       await store.load();
       expect(store.bibleReadingTotal, 31101);
       store.goToBiblePage(bibleVerseIndex(43, 24, 7));
-      store.toggleBibleRead();
       expect(store.selectedVerse.key, '43:24:8');
       expect(store.bibleReadDates, isEmpty);
       for (var i = 0; i <= bibleVerseIndex(43, 24, 7); i++) {
@@ -152,7 +153,7 @@ void main() {
     final store = PlannerStore(prefs);
     await store.load();
     expect(store.selectedVerse.key, '63:1:15');
-    store.saveBibleNote('위치 유지');
+    store.saveBibleNoteAt(store.selectedVerse.key, '위치 유지');
     await store.flush();
     final reloaded = PlannerStore(prefs);
     await reloaded.load();
@@ -164,7 +165,9 @@ void main() {
   test(
     'bundle validation rejects a lost position and overlapping range',
     () async {
-      final raw = await rootBundle.loadString('assets/bible/gae.json');
+      final raw = await rootBundle.loadString(
+        'assets/bible/korean_revised.json',
+      );
       final missing = jsonDecode(raw) as Map<String, dynamic>;
       (missing['verses'] as Map).remove('0:1:1');
       expect(
@@ -186,7 +189,7 @@ void main() {
       store.bibleContent = (await tester.runAsync(BibleContent.load))!;
       await tester.pumpWidget(
         MaterialApp(
-          home: Scaffold(body: VerseCard(store: store)),
+          home: Scaffold(body: DailyVerseCard(store: store)),
         ),
       );
       expect(find.text('태초에 하나님이 천지를 창조하시니라'), findsOneWidget);
@@ -203,7 +206,9 @@ void main() {
     final store = PlannerStore(memoryPreferences());
     store.bibleContent = (await tester.runAsync(BibleContent.load))!;
     store.goToBiblePage(bibleVerseIndex(4, 6, 18));
-    await tester.pumpWidget(MaterialApp(home: BibleScreen(store: store)));
+    await tester.pumpWidget(
+      MaterialApp(home: BibleJournalScreen(store: store)),
+    );
     await tester.pumpAndSettle();
     expect(find.text('신명기 6장 18–19절'), findsOneWidget);
     await tester.scrollUntilVisible(

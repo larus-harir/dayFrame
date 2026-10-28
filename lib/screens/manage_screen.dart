@@ -3,7 +3,7 @@ import '../core/store.dart';
 import '../core/format.dart';
 import '../widgets/common.dart';
 import '../widgets/editors.dart';
-import 'bible_screen.dart';
+import 'bible_journal_screen.dart';
 import 'calendar_screen.dart';
 import 'goals_screen.dart';
 import 'notes_screen.dart';
@@ -39,7 +39,9 @@ class ManageScreen extends StatelessWidget {
         trailing: const Icon(Icons.chevron_right),
         onTap: () => Navigator.push(
           context,
-          MaterialPageRoute<void>(builder: (_) => BibleScreen(store: store)),
+          MaterialPageRoute<void>(
+            builder: (_) => BibleJournalScreen(store: store),
+          ),
         ),
       ),
     ],

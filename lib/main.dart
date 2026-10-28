@@ -15,7 +15,7 @@ Future<void> main() async {
   await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
   final store = PlannerStore(SharedPreferencesAsync());
   try {
-    await store.load();
+    await store.load(startBibleSession: true);
     runApp(DayframeApp(store: store));
   } catch (error) {
     runApp(
@@ -89,7 +89,7 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
     try {
       await LockSurface.flushOverlay();
       await widget.store.flush();
-      await widget.store.load();
+      await widget.store.load(startBibleSession: true);
       if (mounted) {
         syncLock();
         setState(() => resumeTick++);

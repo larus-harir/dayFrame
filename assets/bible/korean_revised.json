@@ -1,37 +1,14 @@
 {
   "metadata": {
     "translation": "개역개정",
-    "source": "사용자 제공 bible.json",
-    "sourceUrl": "https://sieon-dev.tistory.com/127",
     "originalSha256": "0a2fc18d31aa1fffe7b0b726dfbfe69deee8354a47547e82c4b56381b00316d5",
     "originalRecords": 31089,
     "passages": 31088,
     "coveredPositions": 31101,
-    "missing": [
+    "contentSha256": "c3fd470f1c272ce668336b966775e512a585cc8b02f9ff91d20886630e0b7eb8",
+    "excluded": [
       "43:24:7"
-    ],
-    "corrections": [
-      {
-        "from": "요18:이",
-        "to": "요18:38",
-        "description": "절 번호에 분리된 이와 후속 문장을 앞 절에 병합"
-      }
-    ],
-    "removedControls": [
-      {
-        "key": "6:21:25",
-        "removedNulls": 7
-      },
-      {
-        "key": "35:3:20",
-        "removedNulls": 9
-      },
-      {
-        "key": "59:5:14",
-        "removedNulls": 14
-      }
-    ],
-    "contentSha256": "c3fd470f1c272ce668336b966775e512a585cc8b02f9ff91d20886630e0b7eb8"
+    ]
   },
   "ranges": {
     "4:6:18": 19,

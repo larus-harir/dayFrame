@@ -8,14 +8,10 @@ class PagedBoard extends StatefulWidget {
     required this.sections,
     required this.onClose,
     this.compactSections = const {},
-    this.denseSections = const {},
-    this.keepWithNext = const {},
     this.compactTriggers = const {},
   });
   final Map<String, Widget> sections;
   final Map<String, Widget> compactSections;
-  final Map<String, Widget> denseSections;
-  final Map<String, String> keepWithNext;
   final Map<String, Widget> compactTriggers;
   final VoidCallback onClose;
   @override
@@ -44,12 +40,9 @@ class _PagedBoardState extends State<PagedBoard> {
             for (final entry in widget.sections.entries) {
               final variants = <(Widget, double)>[
                 (entry.value, heights[entry.key] ?? budget),
-                if (widget.denseSections[entry.key] case final Widget dense)
-                  (dense, heights['dense-${entry.key}'] ?? budget),
                 if (widget.compactSections[entry.key] case final Widget compact)
                   (compact, heights['compact-${entry.key}'] ?? budget),
               ];
-              final reserve = heights[widget.keepWithNext[entry.key]] ?? 0;
               (Widget, double) choose(double available) {
                 final eligible =
                     widget.compactTriggers.containsKey(entry.key) &&
@@ -58,11 +51,8 @@ class _PagedBoardState extends State<PagedBoard> {
                     ? variants.take(1).toList()
                     : variants;
                 return eligible.firstWhere(
-                  (item) => item.$2 + reserve <= available,
-                  orElse: () => eligible.firstWhere(
-                    (item) => item.$2 <= available,
-                    orElse: () => eligible.last,
-                  ),
+                  (item) => item.$2 <= available,
+                  orElse: () => eligible.last,
                 );
               }
 
@@ -92,8 +82,6 @@ class _PagedBoardState extends State<PagedBoard> {
                       children: [
                         for (final entry in {
                           ...widget.sections,
-                          for (final item in widget.denseSections.entries)
-                            'dense-${item.key}': item.value,
                           for (final item in widget.compactSections.entries)
                             'compact-${item.key}': item.value,
                           for (final item in widget.compactTriggers.entries)

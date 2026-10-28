@@ -1,12 +1,12 @@
-import 'package:dayframe/core/bible_data.dart';
+import 'package:dayframe/core/bible/reference.dart';
 import 'package:dayframe/core/models.dart';
 import 'package:dayframe/core/store.dart';
-import 'package:dayframe/screens/bible_screen.dart';
+import 'package:dayframe/screens/bible_journal_screen.dart';
 import 'package:dayframe/screens/section_order_screen.dart';
 import 'package:dayframe/widgets/planner_board.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'test_support.dart';
+import '../test_support.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -31,11 +31,15 @@ void main() {
       final cursor = store.biblePage;
       store.bibleReadDates['0:1:1'] = '2026-10-27';
       store.saveBibleNoteAt('0:1:1', '지난 기록');
-      await tester.pumpWidget(MaterialApp(home: BibleScreen(store: store)));
+      await tester.pumpWidget(
+        MaterialApp(home: BibleJournalScreen(store: store)),
+      );
       await tester.pumpAndSettle();
       await tester.tap(find.text('기록'));
       await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const ValueKey('bible-history-0:1:1')));
+      await tester.tap(
+        find.byKey(const ValueKey('bible-history-0:1:1-2026-10-27')),
+      );
       await tester.pumpAndSettle();
       expect(store.biblePage, cursor);
       await tester.tap(find.byKey(const Key('bible-bookmark')));
@@ -76,7 +80,9 @@ void main() {
         '0:1:1': '2026-10-27',
         '0:1:2': '2026-10-27',
       });
-      await tester.pumpWidget(MaterialApp(home: BibleScreen(store: store)));
+      await tester.pumpWidget(
+        MaterialApp(home: BibleJournalScreen(store: store)),
+      );
       await tester.pumpAndSettle();
       await tester.tap(find.text('진행도'));
       await tester.pumpAndSettle();

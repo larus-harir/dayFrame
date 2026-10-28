@@ -1,8 +1,9 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../core/format.dart';
 import '../core/store.dart';
 import 'compact_calendar.dart';
-import 'verse_card.dart';
+import 'daily_verse_card.dart';
 import 'paged_board.dart';
 import 'editors.dart';
 import 'common.dart';
@@ -21,8 +22,60 @@ class PlannerBoard extends StatefulWidget {
   State<PlannerBoard> createState() => _PlannerBoardState();
 }
 
-class _PlannerBoardState extends State<PlannerBoard> {
-  DateTime selected = dateOnly(DateTime.now());
+class _PlannerBoardState extends State<PlannerBoard>
+    with WidgetsBindingObserver {
+  Timer? _midnight;
+  late DateTime _today = dateOnly(widget.store.now);
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _scheduleMidnight();
+  }
+
+  void _scheduleMidnight() {
+    _midnight?.cancel();
+    final now = widget.store.now;
+    _midnight = Timer(
+      DateTime(now.year, now.month, now.day + 1).difference(now),
+      () {
+        if (!mounted) return;
+        _refreshDate();
+        _scheduleMidnight();
+      },
+    );
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _refreshDate();
+      _scheduleMidnight();
+    }
+  }
+
+  void _refreshDate() {
+    final today = dateOnly(widget.store.now);
+    if (selected == _today && today != _today) {
+      selected = today;
+      month = DateTime(today.year, today.month);
+      week = DateTime(today.year, today.month, today.day - today.weekday + 1);
+      tappedDay = null;
+    }
+    _today = today;
+    widget.store.refreshBibleDay();
+    setState(() {});
+  }
+
+  @override
+  void dispose() {
+    _midnight?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  late DateTime selected = _today;
   late DateTime month = DateTime(selected.year, selected.month);
   late DateTime week = DateTime(
     selected.year,
@@ -38,7 +91,7 @@ class _PlannerBoardState extends State<PlannerBoard> {
       animation: store,
       builder: (context, _) {
         final hidden = widget.locked && store.display.hidePrivateDetails;
-        final today = DateTime.now();
+        final today = store.now;
         final tasks = store.tasksOn(today);
         final events = store.eventsOn(selected);
         final notes = store.sortedNotes;
@@ -144,7 +197,10 @@ class _PlannerBoardState extends State<PlannerBoard> {
             },
             sections: orderedSections({
               if (store.display.bible)
-                'bible': VerseCard(key: const Key('board-bible'), store: store),
+                'bible': DailyVerseCard(
+                  key: const Key('board-bible'),
+                  store: store,
+                ),
               'calendar-memo': calendarAndMemo(false),
               if (store.display.tasks)
                 'tasks': _section(
