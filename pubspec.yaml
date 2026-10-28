@@ -1,7 +1,7 @@
 name: dayframe
 description: 개인용 잠금화면 플래너 MVP (Flutter)
 publish_to: 'none'
-version: 0.8.0+10
+version: 0.8.1+11
 
 environment:
   sdk: '>=3.9.0 <4.0.0'
@@ -14,6 +14,7 @@ dependencies:
     sdk: flutter
   file_selector: ^1.1.0
   url_launcher: ^6.3.3
+  csv: ^6.0.0
 
 dev_dependencies:
   flutter_test:

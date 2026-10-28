@@ -62,9 +62,13 @@ class _BibleScreenState extends State<BibleScreen>
       final file = await openFile(
         acceptedTypeGroups: const [
           XTypeGroup(
-            label: '성경 본문 JSON',
-            extensions: ['json'],
-            mimeTypes: ['application/json'],
+            label: '성경 본문 JSON·CSV',
+            extensions: ['json', 'csv'],
+            mimeTypes: [
+              'application/json',
+              'text/csv',
+              'text/comma-separated-values',
+            ],
           ),
         ],
       );
@@ -342,7 +346,7 @@ class _BibleScreenState extends State<BibleScreen>
             const Padding(
               padding: EdgeInsets.all(12),
               child: Text(
-                '사용할 수 있는 개역개정 본문 JSON 파일을 선택하세요. 읽음·기록·북마크는 본문 파일과 별도로 보관합니다.',
+                '사용할 수 있는 개역개정 본문 JSON·CSV 파일을 선택하세요. 읽음·기록·북마크는 본문 파일과 별도로 보관합니다.',
               ),
             ),
             TextButton.icon(

@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:csv/csv.dart';
 import 'bible_data.dart';
 
 class BibleContent {
@@ -12,11 +13,14 @@ class BibleContent {
   final String copyright;
 
   factory BibleContent.parse(String raw) {
-    final data = jsonDecode(raw);
+    final input = raw.replaceFirst(RegExp(r'^\uFEFF'), '').trimLeft();
+    final data = input.startsWith('{') || input.startsWith('[')
+        ? jsonDecode(input)
+        : _readCsv(input);
     if (data is! Map ||
         data['translation'] != '개역개정' ||
         data['verses'] is! Map) {
-      throw const FormatException('개역개정 본문 JSON 형식을 확인해주세요.');
+      throw const FormatException('개역개정 본문 형식과 번역명을 확인해주세요.');
     }
     final verses = <String, String>{};
     for (final entry in (data['verses'] as Map).entries) {
@@ -37,6 +41,107 @@ class BibleContent {
       copyright: data['copyright']?.toString() ?? '',
     );
   }
+  String toJson() => jsonEncode({
+    'translation': '개역개정',
+    'source': source,
+    'copyright': copyright,
+    'verses': verses,
+  });
+
+  String toCsv() {
+    final rows = <List<String>>[
+      [
+        'book',
+        'chapter',
+        'verse',
+        'text',
+        'translation',
+        'source',
+        'copyright',
+      ],
+    ];
+    for (var i = 0; i < totalBibleVerses; i++) {
+      final verse = bibleVerseAt(i);
+      final text = verses[verse.key];
+      if (text == null) continue;
+      rows.add([
+        bibleBookNames[verse.book],
+        '${verse.chapter}',
+        '${verse.verse}',
+        text,
+        rows.length == 1 ? '개역개정' : '',
+        rows.length == 1 ? source : '',
+        rows.length == 1 ? copyright : '',
+      ]);
+    }
+    return const ListToCsvConverter().convert(rows);
+  }
+}
+
+Map<String, Object> _readCsv(String input) {
+  final firstNewline = input.indexOf('\n');
+  final eol = firstNewline > 0 && input[firstNewline - 1] == '\r'
+      ? '\r\n'
+      : '\n';
+  List<List<dynamic>> rows;
+  try {
+    rows = CsvToListConverter(
+      shouldParseNumbers: false,
+      allowInvalid: false,
+      eol: eol,
+    ).convert(input);
+  } catch (_) {
+    throw const FormatException('CSV의 따옴표나 줄 구분을 확인해주세요.');
+  }
+  if (rows.isEmpty) throw const FormatException('본문 CSV가 비어 있습니다.');
+  final headers = rows.first.map((v) => v.toString().trim()).toList();
+  if (headers.toSet().length != headers.length ||
+      ![
+        'book',
+        'chapter',
+        'verse',
+        'text',
+        'translation',
+      ].every(headers.contains)) {
+    throw const FormatException(
+      'CSV에 book, chapter, verse, text, translation 열이 필요합니다.',
+    );
+  }
+  final metadata = <String, String>{};
+  final verses = <String, String>{};
+  for (var i = 1; i < rows.length; i++) {
+    final row = rows[i];
+    if (row.every((v) => v.toString().trim().isEmpty)) continue;
+    if (row.length != headers.length) {
+      throw FormatException('CSV ${i + 1}행의 열 개수를 확인해주세요.');
+    }
+    String cell(String name) =>
+        headers.contains(name) ? row[headers.indexOf(name)].toString() : '';
+    for (final name in ['translation', 'source', 'copyright']) {
+      final value = cell(name).trim();
+      if (value.isEmpty) continue;
+      if (metadata.containsKey(name) && metadata[name] != value) {
+        throw FormatException('CSV ${i + 1}행의 $name 값이 앞의 행과 다릅니다.');
+      }
+      metadata[name] = value;
+    }
+    final bookName = cell('book').trim();
+    final book = int.tryParse(bookName) ?? bibleBookNames.indexOf(bookName);
+    final chapter = int.tryParse(cell('chapter').trim());
+    final verse = int.tryParse(cell('verse').trim());
+    final key = '$book:$chapter:$verse';
+    if (chapter == null ||
+        verse == null ||
+        bibleVerseFromKey(key) == null ||
+        cell('text').trim().isEmpty) {
+      throw FormatException('CSV ${i + 1}행의 권·장·절 또는 본문을 확인해주세요.');
+    }
+    if (verses.containsKey(key)) {
+      throw FormatException('CSV ${i + 1}행에 중복된 절이 있습니다: $key');
+    }
+    verses[key] = cell('text');
+  }
+  return {...metadata, 'verses': verses};
 }
 
 Uri officialBibleUri(BibleVerse verse) =>
