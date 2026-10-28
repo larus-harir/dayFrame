@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import '../format.dart';
+import '../models.dart';
 import 'content.dart';
 import 'reference.dart';
 
@@ -11,6 +12,7 @@ class BibleReadRecord {
 
 mixin BibleReading on ChangeNotifier {
   DateTime get now;
+  DisplayPreferences get display;
   void saveBibleChanges();
 
   Map<String, String> bibleReadDates = {};
@@ -104,9 +106,11 @@ mixin BibleReading on ChangeNotifier {
 
   void openBibleSession() {
     _bibleDay = dayKey(now);
+    final previousPage = biblePage;
     biblePage = isBibleRead(selectedVerse)
         ? _nextUnreadFrom((biblePage + 1) % totalBibleVerses)
         : bibleContent.availablePage(biblePage);
+    if (biblePage != previousPage) display.bibleCollapsed = false;
     saveBibleChanges();
   }
 
@@ -129,6 +133,8 @@ mixin BibleReading on ChangeNotifier {
   void _markRead(BibleVerse verse) {
     final today = dayKey(now);
     final keys = bibleContent.keysFor(verse);
+    if (keys.isEmpty) return;
+    display.bibleCollapsed = true;
     bibleReadingDays.putIfAbsent(today, () => {}).addAll(keys);
     for (final key in keys) {
       bibleReadDates.putIfAbsent(key, () => today);

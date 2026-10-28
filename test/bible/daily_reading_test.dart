@@ -23,12 +23,14 @@ void main() {
       expect(store.selectedVerse.key, '0:1:1');
       expect(store.hasReadBibleToday, isTrue);
       expect(store.isBibleReadToday(store.selectedVerse), isTrue);
+      expect(store.display.bibleCollapsed, isTrue);
       await store.flush();
       final reopened = PlannerStore(prefs, clock: () => now);
       await reopened.load(startBibleSession: true);
       expect(reopened.selectedVerse.key, '0:1:2');
       expect(reopened.hasReadBibleToday, isTrue);
       expect(reopened.isBibleReadToday(reopened.selectedVerse), isFalse);
+      expect(reopened.display.bibleCollapsed, isFalse);
       await reopened.flush();
       store.dispose();
       reopened.dispose();
@@ -160,7 +162,7 @@ void main() {
   );
 
   testWidgets(
-    'collapse reduces card height, keeps controls and persists to lock screen',
+    'compact verse is a right aligned summary and read collapses it automatically',
     (tester) async {
       final prefs = memoryPreferences();
       final store = PlannerStore(prefs);
@@ -181,12 +183,33 @@ void main() {
       final before = tester.getSize(find.byType(Card)).height;
       await tester.tap(find.byTooltip('본문 접기'));
       await tester.pumpAndSettle();
-      expect(tester.getSize(find.byType(Card)).height, lessThan(before));
+      final compact = find.byKey(const Key('verse-compact'));
+      expect(tester.getSize(compact).height, lessThan(before));
+      expect(tester.getSize(compact).height, lessThanOrEqualTo(56));
+      final button = tester.getRect(find.byKey(const Key('verse-collapse')));
+      expect(
+        button.right,
+        closeTo(
+          tester.view.physicalSize.width / tester.view.devicePixelRatio - 4,
+          1,
+        ),
+      );
+      expect(
+        button.width,
+        lessThan(
+          tester.view.physicalSize.width / tester.view.devicePixelRatio / 2,
+        ),
+      );
+      expect(find.byKey(const Key('verse-read')), findsNothing);
+      expect(find.byTooltip('다음 절'), findsNothing);
       expect(find.text('태초에 하나님이 천지를 창조하시니라'), findsNothing);
-      expect(find.text('창세기 1장 1절'), findsOneWidget);
+      expect(find.text('창세기 1:1'), findsOneWidget);
+      await tester.tap(find.byTooltip('본문 펼치기'));
+      await tester.pumpAndSettle();
       await tester.tap(find.byKey(const Key('verse-read')));
       await tester.pumpAndSettle();
-      expect(find.text('오늘 읽기 완료'), findsOneWidget);
+      expect(find.byIcon(Icons.check_circle), findsOneWidget);
+      expect(find.byKey(const Key('verse-compact')), findsOneWidget);
       expect(store.selectedVerse.key, '0:1:1');
       await store.flush();
       final loaded = PlannerStore(prefs);

@@ -1,7 +1,7 @@
 name: dayframe
 description: 하루의 읽기와 일정을 담는 잠금화면 플래너
 publish_to: 'none'
-version: 0.10.0+13
+version: 0.11.0+14
 
 environment:
   sdk: '>=3.9.0 <4.0.0'

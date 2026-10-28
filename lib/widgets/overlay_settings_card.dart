@@ -70,34 +70,73 @@ class _OverlaySettingsCardState extends State<OverlaySettingsCard>
   }
 
   @override
-  Widget build(BuildContext context) => Card(
-    child: Column(
-      children: [
-        SwitchListTile(
-          title: const Text('잠금화면 사용'),
-          subtitle: Text(running ? '켜짐' : '꺼짐'),
-          value: running,
-          onChanged: busy || !LockSurface.supported || (!permission && !running)
-              ? null
-              : (_) => act(
-                  running ? LockSurface.stopOverlay : LockSurface.startOverlay,
-                ),
-        ),
-        if (!permission)
-          TextButton(
-            onPressed: busy || !LockSurface.supported
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Card(
+      color: scheme.secondaryContainer.withValues(alpha: .65),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SwitchListTile(
+            secondary: Icon(
+              Icons.lock_outline,
+              color: scheme.onSecondaryContainer,
+            ),
+            title: const Text('잠금화면 사용'),
+            subtitle: Text(
+              !permission
+                  ? '표시 권한이 필요해요'
+                  : running
+                  ? '사용 중'
+                  : '사용 안 함',
+            ),
+            value: running,
+            onChanged:
+                busy || !LockSurface.supported || (!permission && !running)
                 ? null
-                : () => act(LockSurface.requestOverlayPermission),
-            child: const Text('표시 권한 허용'),
+                : (_) => act(
+                    running
+                        ? LockSurface.stopOverlay
+                        : LockSurface.startOverlay,
+                  ),
           ),
-        if (running)
-          TextButton(
-            onPressed: busy ? null : () => act(LockSurface.showOverlay),
-            child: const Text('화면 열기'),
-          ),
-        if (error != null)
-          Padding(padding: const EdgeInsets.all(12), child: Text(error!)),
-      ],
-    ),
-  );
+          if (!permission || running)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  if (!permission)
+                    FilledButton.tonalIcon(
+                      onPressed: busy || !LockSurface.supported
+                          ? null
+                          : () => act(LockSurface.requestOverlayPermission),
+                      icon: const Icon(Icons.open_in_new, size: 16),
+                      label: const Text('표시 권한 허용'),
+                    ),
+                  if (running)
+                    OutlinedButton.icon(
+                      onPressed: busy
+                          ? null
+                          : () => act(LockSurface.showOverlay),
+                      icon: const Icon(Icons.preview_outlined, size: 16),
+                      label: const Text('화면 열기'),
+                    ),
+                ],
+              ),
+            ),
+          if (busy) const LinearProgressIndicator(minHeight: 2),
+          if (error != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              child: Text(
+                error!,
+                style: TextStyle(color: scheme.onSecondaryContainer),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
 }

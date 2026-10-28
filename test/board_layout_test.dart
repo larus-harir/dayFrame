@@ -356,6 +356,7 @@ void main() {
     await tester.tap(find.byTooltip('설정'));
     await tester.pumpAndSettle();
     final hidden = find.widgetWithText(SwitchListTile, '잠금화면에서 내용 숨기기');
+    await tester.ensureVisible(hidden);
     await tester.tap(hidden);
     await tester.pumpAndSettle();
     expect(tester.widget<SwitchListTile>(hidden).value, isFalse);
@@ -363,6 +364,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(tester.widget<SwitchListTile>(hidden).value, isTrue);
     final dark = find.widgetWithText(SwitchListTile, '다크 모드');
+    await tester.ensureVisible(dark);
     await tester.tap(dark);
     await tester.pumpAndSettle();
     expect(tester.widget<SwitchListTile>(dark).value, isTrue);
@@ -372,6 +374,7 @@ void main() {
     await tester.runAsync(reloaded.load);
     expect(reloaded.display.darkMode, isTrue);
     expect(reloaded.display.hidePrivateDetails, isTrue);
+    await tester.ensureVisible(dark);
     await tester.tap(dark);
     await tester.pumpAndSettle();
     expect(Theme.of(tester.element(dark)).brightness, Brightness.light);

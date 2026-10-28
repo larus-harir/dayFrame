@@ -11,6 +11,53 @@ class DailyVerseCard extends StatelessWidget {
     final verse = store.selectedVerse;
     final completed = store.isBibleReadToday(verse);
     final collapsed = store.display.bibleCollapsed;
+    if (collapsed) {
+      final passage = store.bibleContent.passageFor(verse);
+      final reference =
+          passage?.compactReference ??
+          '${bibleBookNames[verse.book]} ${verse.chapter}:${verse.verse}';
+      final dailyCompleted = store.hasReadBibleToday;
+      return Align(
+        key: const Key('verse-compact'),
+        alignment: Alignment.centerRight,
+        heightFactor: 1,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
+          child: Tooltip(
+            message: '본문 펼치기',
+            child: Semantics(
+              label:
+                  '${store.bibleContent.referenceFor(verse)}, ${dailyCompleted ? '오늘 읽기 완료' : '오늘 읽기 전'}',
+              child: TextButton(
+                key: const Key('verse-collapse'),
+                onPressed: () =>
+                    store.updateDisplay((p) => p.bibleCollapsed = false),
+                style: TextButton.styleFrom(
+                  backgroundColor: Theme.of(
+                    context,
+                  ).colorScheme.secondaryContainer.withValues(alpha: .55),
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                  minimumSize: const Size(0, 48),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Flexible(child: Text(reference)),
+                    const SizedBox(width: 8),
+                    Icon(
+                      dailyCompleted
+                          ? Icons.check_circle
+                          : Icons.radio_button_unchecked,
+                      size: 18,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
     var distance = 0.0;
     return Card(
       child: Padding(
@@ -49,14 +96,10 @@ class DailyVerseCard extends StatelessWidget {
                   ),
                   IconButton(
                     key: const Key('verse-collapse'),
-                    tooltip: collapsed ? '본문 펼치기' : '본문 접기',
-                    onPressed: () => store.updateDisplay(
-                      (p) => p.bibleCollapsed = !collapsed,
-                    ),
-                    icon: Icon(
-                      collapsed ? Icons.unfold_more : Icons.unfold_less,
-                      size: 20,
-                    ),
+                    tooltip: '본문 접기',
+                    onPressed: () =>
+                        store.updateDisplay((p) => p.bibleCollapsed = true),
+                    icon: const Icon(Icons.unfold_less, size: 20),
                   ),
                   IconButton(
                     tooltip: '다음 절',
@@ -67,20 +110,19 @@ class DailyVerseCard extends StatelessWidget {
                   ),
                 ],
               ),
-              if (!collapsed)
-                if (store.bibleContent.verses[verse.key] case final String text)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 6,
-                    ),
-                    child: Text(
-                      text,
-                      maxLines: 4,
-                      overflow: TextOverflow.ellipsis,
-                      textAlign: TextAlign.center,
-                    ),
+              if (store.bibleContent.verses[verse.key] case final String text)
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 6,
                   ),
+                  child: Text(
+                    text,
+                    maxLines: 4,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                  ),
+                ),
               if (!completed && store.hasReadBibleToday)
                 Text('오늘 읽기 완료', style: Theme.of(context).textTheme.labelSmall),
               Row(

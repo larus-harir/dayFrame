@@ -24,6 +24,7 @@ class PlannerStore extends ChangeNotifier with BibleReading {
   List<PlannerNote> notes = [];
   List<GoalItem> goals = [];
   Future<void> flush() => _lastSave;
+  @override
   DisplayPreferences display = DisplayPreferences();
 
   Future<void> load({bool startBibleSession = false}) async {

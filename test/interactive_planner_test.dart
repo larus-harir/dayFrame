@@ -75,6 +75,9 @@ void main() {
       await tester.pumpAndSettle();
       expect(store.totalReadCount, 1);
       expect(store.selectedVerse.verse, 1);
+      expect(find.byIcon(Icons.check_circle), findsOneWidget);
+      await tester.tap(find.byTooltip('본문 펼치기'));
+      await tester.pumpAndSettle();
       expect(find.text('오늘 읽기 완료'), findsOneWidget);
       await tester.tap(find.byTooltip('읽음 취소'));
       await tester.pumpAndSettle();

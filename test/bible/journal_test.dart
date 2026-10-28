@@ -2,7 +2,7 @@ import 'package:dayframe/core/bible/reference.dart';
 import 'package:dayframe/core/models.dart';
 import 'package:dayframe/core/store.dart';
 import 'package:dayframe/screens/bible_journal_screen.dart';
-import 'package:dayframe/screens/section_order_screen.dart';
+import 'package:dayframe/screens/display_layout_screen.dart';
 import 'package:dayframe/widgets/planner_board.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -132,19 +132,23 @@ void main() {
   testWidgets('dragging a section changes and saves the shared order', (
     tester,
   ) async {
+    tester.view.physicalSize = const Size(400, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
     final prefs = memoryPreferences();
     final store = PlannerStore(prefs);
     await tester.pumpWidget(
-      MaterialApp(home: SectionOrderScreen(store: store)),
+      MaterialApp(home: DisplayLayoutScreen(store: store)),
     );
     await tester.pumpAndSettle();
     final handle = find.byType(ReorderableDragStartListener).last;
+    final first = tester.getTopLeft(find.byKey(const ValueKey('order-bible')));
     final gesture = await tester.startGesture(tester.getCenter(handle));
     await tester.pump();
     await gesture.moveBy(const Offset(0, -30));
     await tester.pump();
-    final first = tester.getTopLeft(find.byKey(const ValueKey('order-bible')));
-    await gesture.moveTo(Offset(tester.getCenter(handle).dx, first.dy - 40));
+    await gesture.moveTo(Offset(tester.getCenter(handle).dx, first.dy - 60));
     await tester.pumpAndSettle();
     await gesture.up();
     await tester.pumpAndSettle();

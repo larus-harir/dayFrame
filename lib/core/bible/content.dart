@@ -10,6 +10,8 @@ class BiblePassage {
   String get reference => first.index == last.index
       ? first.reference
       : '${bibleBookNames[first.book]} ${first.chapter}장 ${first.verse}–${last.verse}절';
+  String get compactReference =>
+      '${bibleBookNames[first.book]} ${first.chapter}:${first.verse}${first.index == last.index ? '' : '–${last.verse}'}';
   Iterable<String> get keys sync* {
     for (var i = first.index; i <= last.index; i++) {
       yield bibleVerseAt(i).key;
