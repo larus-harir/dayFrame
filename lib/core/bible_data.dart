@@ -223,6 +223,19 @@ BibleVerse? bibleVerseFromKey(String key) {
   }
 }
 
+String legacyBibleVerseKeyAt(int index) {
+  var remaining = index.clamp(0, 31101);
+  for (var b = 0; b < legacyKjvVerseCounts.length; b++) {
+    for (var c = 0; c < legacyKjvVerseCounts[b].length; c++) {
+      if (remaining < legacyKjvVerseCounts[b][c]) {
+        return '$b:${c + 1}:${remaining + 1}';
+      }
+      remaining -= legacyKjvVerseCounts[b][c];
+    }
+  }
+  return '65:22:21';
+}
+
 // 장 단위 기록의 날짜를 각 절에 그대로 옮긴다.
 Map<String, String> migrateChapterDates(Map<String, String> chapters) {
   final result = <String, String>{};

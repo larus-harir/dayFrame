@@ -8,7 +8,7 @@ class VerseCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final verse = store.selectedVerse;
-    void move(int delta) => store.goToBiblePage(verse.index + delta);
+    void move(int delta) => store.moveBibleVerse(delta);
     var distance = 0.0;
     return Card(
       child: Padding(
@@ -42,7 +42,7 @@ class VerseCard extends StatelessWidget {
                       child: Column(
                         children: [
                           Text(
-                            verse.reference,
+                            store.bibleContent.referenceFor(verse),
                             style: Theme.of(context).textTheme.titleMedium,
                           ),
                           if (store.bibleContent.verses[verse.key]
@@ -81,7 +81,13 @@ class VerseCard extends StatelessWidget {
                 store.isBibleRead(verse) ? Icons.undo : Icons.check,
                 size: 18,
               ),
-              label: Text(store.isBibleRead(verse) ? '읽음 취소' : '읽음 · 다음 절'),
+              label: Text(
+                store.bibleContent.missing.contains(verse.key)
+                    ? '본문 없음 · 다음 절'
+                    : store.isBibleRead(verse)
+                    ? '읽음 취소'
+                    : '읽음 · 다음 절',
+              ),
             ),
           ],
         ),

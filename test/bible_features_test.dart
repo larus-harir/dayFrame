@@ -1,11 +1,8 @@
-import 'dart:convert';
 import 'package:dayframe/core/bible_data.dart';
-import 'package:dayframe/core/bible_content.dart';
 import 'package:dayframe/core/models.dart';
 import 'package:dayframe/core/store.dart';
 import 'package:dayframe/screens/bible_screen.dart';
 import 'package:dayframe/screens/section_order_screen.dart';
-import 'package:dayframe/widgets/verse_card.dart';
 import 'package:dayframe/widgets/planner_board.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -25,49 +22,6 @@ void main() {
       ['goals', 'bible', 'calendar-memo', 'tasks'],
     );
   });
-  test(
-    'imported text persists independently and a failed replacement preserves it',
-    () async {
-      final prefs = memoryPreferences();
-      final store = PlannerStore(prefs);
-      store.goToBiblePage(99);
-      store.saveBibleNote('기록 유지');
-      final data = jsonEncode({
-        'translation': '개역개정',
-        'source': '사용자 본문',
-        'copyright': '제공자 표시',
-        'verses': {'0:1:1': '테스트용 본문'},
-      });
-      await store.importBibleContent(data);
-      await expectLater(
-        store.importBibleContent('{"translation":"다른 번역"}'),
-        throwsFormatException,
-      );
-      await expectLater(
-        store.importBibleContent(
-          jsonEncode({
-            'translation': '개역개정',
-            'verses': {'0:1:999': '잘못된 절'},
-          }),
-        ),
-        throwsFormatException,
-      );
-      await store.flush();
-      final loaded = PlannerStore(prefs);
-      await loaded.load();
-      expect(loaded.bibleContent.verses['0:1:1'], '테스트용 본문');
-      expect(loaded.bibleNotes, store.bibleNotes);
-      expect(loaded.biblePage, 99);
-      expect(officialBibleUri(bibleVerseAt(0)).queryParameters, {
-        'version': 'GAE',
-        'book': 'gen',
-        'chap': '1',
-        'sec': '1',
-      });
-      store.dispose();
-      loaded.dispose();
-    },
-  );
   testWidgets(
     'history review edits the right verse without moving the reading cursor',
     (tester) async {
@@ -104,7 +58,7 @@ void main() {
       expect(store.bibleNotes.containsKey(bibleVerseAt(cursor).key), isFalse);
       await store.flush();
       final other = PlannerStore(prefs);
-      await other.load();
+      await tester.runAsync(other.load);
       expect(other.bibleBookmarks, contains('0:1:1'));
       expect(other.biblePage, cursor);
       expect(other.bibleNotes['0:1:1'], '수정한 기록');
@@ -113,25 +67,6 @@ void main() {
       other.dispose();
     },
   );
-  testWidgets('imported verse appears in the main and lock verse card', (
-    tester,
-  ) async {
-    final store = PlannerStore(memoryPreferences());
-    await store.importBibleContent(
-      jsonEncode({
-        'translation': '개역개정',
-        'verses': {'0:1:1': '테스트 본문 표시'},
-      }),
-    );
-    await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(body: VerseCard(store: store)),
-      ),
-    );
-    expect(find.text('테스트 본문 표시'), findsOneWidget);
-    await tester.pumpWidget(const SizedBox());
-    store.dispose();
-  });
   testWidgets(
     'chapter progress opens a review without changing the reading position',
     (tester) async {
@@ -215,7 +150,7 @@ void main() {
     ]);
     await store.flush();
     final loaded = PlannerStore(prefs);
-    await loaded.load();
+    await tester.runAsync(loaded.load);
     expect(loaded.display.sectionOrder, store.display.sectionOrder);
     await tester.pumpWidget(const SizedBox());
     store.dispose();

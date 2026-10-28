@@ -3,7 +3,6 @@ import '../core/store.dart';
 import '../widgets/overlay_settings_card.dart';
 import 'bible_screen.dart';
 import 'section_order_screen.dart';
-import '../core/bible_data.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key, required this.store});
@@ -31,7 +30,7 @@ class SettingsScreen extends StatelessWidget {
           leading: const Icon(Icons.menu_book_outlined),
           title: const Text('성경 읽기·기록'),
           subtitle: Text(
-            '${store.totalReadCount} / $totalBibleVerses절 · ${(store.totalReadCount / totalBibleVerses * 100).toStringAsFixed(1)}%',
+            '${store.totalReadCount} / ${store.bibleReadingTotal}절 · ${(store.totalReadCount / store.bibleReadingTotal * 100).toStringAsFixed(1)}%',
           ),
           trailing: const Icon(Icons.chevron_right),
           onTap: () => Navigator.push(

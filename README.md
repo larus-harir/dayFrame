@@ -14,11 +14,9 @@ flutter pub get
 flutter run
 ```
 
-**설정 → 성경 읽기·기록**에서 진행도와 지난 기록을 확인한다. 개역개정 본문은 기본 포함하지 않으며, 대한성서공회 읽기를 열거나 [사용 가능한 본문 JSON·CSV](BIBLE_CONTENT.md)을 불러온다.
+**설정 → 성경 읽기·기록**에서 개역개정 본문, 진행도와 지난 기록을 확인한다. 본문은 앱에 포함되어 오프라인으로 읽을 수 있다. 원본의 수정·검증 내역은 [BIBLE_DATA.md](BIBLE_DATA.md)에 있다.
 
 잠금화면은 **설정 → 표시 권한 허용 → 잠금화면 사용**에서 켠다. 재부팅 후에는 다시 켜야 하며, 자동 실행은 기기 설정에 따라 제한될 수 있다.
 기록은 기기에 저장되며 앱을 삭제하면 함께 지워진다.
 
 검사: `flutter analyze`, `flutter test` · Android 검사 기록: [VALIDATION.md](VALIDATION.md)
-
-본문 API·데이터 조사 결과는 [BIBLE_SOURCES.md](BIBLE_SOURCES.md)에 정리했다.

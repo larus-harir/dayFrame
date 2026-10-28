@@ -1,6 +1,6 @@
 /// KJV versification counts only; no Bible text included.
 /// Source: https://raw.githubusercontent.com/thiagobodruk/bible/98a52a5439c1cfe566676e8508795834424a5f3a/json/en_kjv.json
-const bibleVerseCounts = <List<int>>[
+const legacyKjvVerseCounts = <List<int>>[
   [31, 25, 24, 26, 32, 22, 24, 22, 29, 32, 32, 20, 18, 24, 21, 16, 27, 33, 38, 18, 34, 24, 20, 67, 34, 35, 46, 22, 35, 43, 55, 32, 20, 31, 29, 43, 36, 30, 23, 23, 57, 38, 34, 34, 28, 34, 31, 22, 33, 26],
   [22, 25, 22, 31, 23, 30, 25, 32, 35, 29, 10, 51, 22, 31, 27, 36, 16, 27, 25, 26, 36, 31, 33, 18, 40, 37, 21, 43, 46, 38, 18, 35, 23, 35, 35, 38, 29, 31, 43, 38],
   [17, 16, 17, 35, 19, 30, 38, 36, 24, 20, 47, 8, 59, 57, 33, 34, 16, 30, 37, 27, 24, 33, 44, 23, 55, 46, 34],
@@ -67,4 +67,18 @@ const bibleVerseCounts = <List<int>>[
   [14],
   [25],
   [20, 29, 22, 11, 14, 17, 17, 13, 21, 11, 19, 17, 18, 20, 8, 21, 18, 24, 21, 15, 27, 21],
+];
+
+// 첨부 개역개정의 절 번호. 이전 위치 표는 읽던 위치 이전에만 사용한다.
+final bibleVerseCounts = <List<int>>[
+  for (var b = 0; b < legacyKjvVerseCounts.length; b++)
+    List<int>.unmodifiable([
+      for (var c = 0; c < legacyKjvVerseCounts[b].length; c++)
+        if (b == 46 && c == 12)
+          13
+        else if (b == 63 && c == 0)
+          15
+        else
+          legacyKjvVerseCounts[b][c],
+    ]),
 ];

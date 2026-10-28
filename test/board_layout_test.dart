@@ -117,7 +117,7 @@ void main() {
     expect(tester.widget<TextField>(find.byType(TextField)).controller!.text,'수정 전');
     await tester.enterText(find.byType(TextField),'수정 후');await tester.tap(find.text('저장'));await tester.pumpAndSettle();
     expect(store.notes.single.id,'n');expect(store.notes.single.text,'수정 후');
-    await store.flush();final other=PlannerStore(prefs);await other.load();expect(other.notes.single.text,'수정 후');
+    await store.flush();final other=PlannerStore(prefs);await tester.runAsync(other.load);expect(other.notes.single.text,'수정 후');
     store.dispose();other.dispose();
   });
   testWidgets('monthly calendar stays with verse and checklist when space permits', (tester) async {
@@ -143,7 +143,7 @@ void main() {
     await tester.tap(find.byKey(const Key('board-memo')));await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('delete-note-n')));await tester.pumpAndSettle();
     await tester.tap(find.text('삭제'));await tester.pumpAndSettle();expect(store.notes,isEmpty);
-    await store.flush();final other=PlannerStore(prefs);await other.load();expect(other.notes,isEmpty);store.dispose();other.dispose();
+    await store.flush();final other=PlannerStore(prefs);await tester.runAsync(other.load);expect(other.notes,isEmpty);store.dispose();other.dispose();
   });
   testWidgets('calendar events precede notes', (tester) async {
     size(tester,const Size(400,1200));
@@ -170,7 +170,7 @@ void main() {
     await tester.tap(dark); await tester.pumpAndSettle();
     expect(tester.widget<SwitchListTile>(dark).value,isTrue);
     expect(Theme.of(tester.element(dark)).brightness,Brightness.dark);
-    await store.flush(); final reloaded=PlannerStore(prefs);await reloaded.load();
+    await store.flush(); final reloaded=PlannerStore(prefs);await tester.runAsync(reloaded.load);
     expect(reloaded.display.darkMode,isTrue);expect(reloaded.display.hidePrivateDetails,isTrue);
     await tester.tap(dark);await tester.pumpAndSettle();
     expect(Theme.of(tester.element(dark)).brightness,Brightness.light);

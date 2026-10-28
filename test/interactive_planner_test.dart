@@ -40,7 +40,7 @@ void main() {
     expect(store.tasks.single.isDone(DateTime.now()), isTrue);
     await store.flush();
     final reloaded = PlannerStore(prefs);
-    await reloaded.load();
+    await tester.runAsync(reloaded.load);
     expect(reloaded.tasks.single.isDone(DateTime.now()), isTrue);
     await tester.pumpWidget(const SizedBox());
     store.dispose();
@@ -83,7 +83,7 @@ void main() {
       expect(store.totalReadCount, 0);
       await store.flush();
       final reloaded = PlannerStore(prefs);
-      await reloaded.load();
+      await tester.runAsync(reloaded.load);
       expect(reloaded.totalReadCount, 0);
       expect(reloaded.biblePage, 0);
       await tester.pumpWidget(const SizedBox());
@@ -120,7 +120,7 @@ void main() {
       expect(store.totalReadCount, 1);
       await store.flush();
       final reloaded = PlannerStore(prefs);
-      await reloaded.load();
+      await tester.runAsync(reloaded.load);
       expect(reloaded.tasks.single.isDone(DateTime.now()), isTrue);
       expect(reloaded.totalReadCount, 1);
       await tester.pumpWidget(const SizedBox());
