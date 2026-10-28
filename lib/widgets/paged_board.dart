@@ -10,11 +10,13 @@ class PagedBoard extends StatefulWidget {
     this.compactSections = const {},
     this.denseSections = const {},
     this.keepWithNext = const {},
+    this.compactTriggers = const {},
   });
   final Map<String, Widget> sections;
   final Map<String, Widget> compactSections;
   final Map<String, Widget> denseSections;
   final Map<String, String> keepWithNext;
+  final Map<String, Widget> compactTriggers;
   final VoidCallback onClose;
   @override
   State<PagedBoard> createState() => _PagedBoardState();
@@ -48,13 +50,22 @@ class _PagedBoardState extends State<PagedBoard> {
                   (compact, heights['compact-${entry.key}'] ?? budget),
               ];
               final reserve = heights[widget.keepWithNext[entry.key]] ?? 0;
-              (Widget, double) choose(double available) => variants.firstWhere(
-                (item) => item.$2 + reserve <= available,
-                orElse: () => variants.firstWhere(
-                  (item) => item.$2 <= available,
-                  orElse: () => variants.last,
-                ),
-              );
+              (Widget, double) choose(double available) {
+                final eligible =
+                    widget.compactTriggers.containsKey(entry.key) &&
+                        (heights['trigger-${entry.key}'] ?? double.infinity) >
+                            available
+                    ? variants.take(1).toList()
+                    : variants;
+                return eligible.firstWhere(
+                  (item) => item.$2 + reserve <= available,
+                  orElse: () => eligible.firstWhere(
+                    (item) => item.$2 <= available,
+                    orElse: () => eligible.last,
+                  ),
+                );
+              }
+
               var chosen = choose(budget - used);
               if (pages.last.isNotEmpty && used + chosen.$2 > budget) {
                 pages.add([]);
@@ -85,6 +96,8 @@ class _PagedBoardState extends State<PagedBoard> {
                             'dense-${item.key}': item.value,
                           for (final item in widget.compactSections.entries)
                             'compact-${item.key}': item.value,
+                          for (final item in widget.compactTriggers.entries)
+                            'trigger-${item.key}': item.value,
                         }.entries)
                           _Measure(
                             key: ValueKey(entry.key),

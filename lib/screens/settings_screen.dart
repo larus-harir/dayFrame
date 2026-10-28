@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import '../core/store.dart';
 import '../widgets/overlay_settings_card.dart';
+import 'bible_screen.dart';
+import 'section_order_screen.dart';
+import '../core/bible_data.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key, required this.store});
@@ -23,6 +26,29 @@ class SettingsScreen extends StatelessWidget {
           title: const Text('다크 모드'),
           value: store.display.darkMode,
           onChanged: (value) => store.updateDisplay((p) => p.darkMode = value),
+        ),
+        ListTile(
+          leading: const Icon(Icons.menu_book_outlined),
+          title: const Text('성경 읽기·기록'),
+          subtitle: Text(
+            '${store.totalReadCount} / $totalBibleVerses절 · ${(store.totalReadCount / totalBibleVerses * 100).toStringAsFixed(1)}%',
+          ),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute<void>(builder: (_) => BibleScreen(store: store)),
+          ),
+        ),
+        ListTile(
+          leading: const Icon(Icons.reorder),
+          title: const Text('화면 순서'),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute<void>(
+              builder: (_) => SectionOrderScreen(store: store),
+            ),
+          ),
         ),
         ExpansionTile(
           title: const Text('잠금화면에서 작성 허용'),

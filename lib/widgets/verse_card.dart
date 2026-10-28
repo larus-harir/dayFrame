@@ -45,6 +45,17 @@ class VerseCard extends StatelessWidget {
                             verse.reference,
                             style: Theme.of(context).textTheme.titleMedium,
                           ),
+                          if (store.bibleContent.verses[verse.key]
+                              case final String text)
+                            Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 6),
+                              child: Text(
+                                text,
+                                maxLines: 4,
+                                overflow: TextOverflow.ellipsis,
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
                           Text(
                             '오늘 ${store.todayReadCount}절',
                             style: Theme.of(context).textTheme.labelSmall,

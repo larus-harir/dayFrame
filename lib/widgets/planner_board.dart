@@ -43,60 +43,56 @@ class _PlannerBoardState extends State<PlannerBoard> {
         final events = store.eventsOn(selected);
         final notes = store.sortedNotes;
         final daily = tasks;
-        Widget calendarAndMemo(bool weekly, {bool dense = false}) => Column(
+        Widget calendar(bool weekly) => _section(
+          '캘린더',
+          key: const Key('board-calendar'),
+          child: CompactCalendar(
+            key: Key(weekly ? 'calendar-week' : 'calendar-month'),
+            weekly: weekly,
+            onExpand: weekly ? () => openMonth(context) : null,
+            weekStart: week,
+            month: month,
+            selected: selected,
+            hasEvents: (date) =>
+                store.display.events && store.eventsOn(date).isNotEmpty,
+            onSelect: (date) {
+              final repeated = tappedDay == dayKey(date);
+              setState(() {
+                selected = date;
+                month = DateTime(date.year, date.month);
+                tappedDay = dayKey(date);
+                week = DateTime(
+                  date.year,
+                  date.month,
+                  date.day - date.weekday + 1,
+                );
+              });
+              if (repeated &&
+                  (!widget.locked || store.display.lockCreateEvent)) {
+                tappedDay = null;
+                editEventDialog(context, store, initialDate: date);
+              }
+            },
+            onMonth: (delta) => setState(() {
+              tappedDay = null;
+              if (weekly) {
+                week = DateTime(week.year, week.month, week.day + delta * 7);
+                selected = DateTime(
+                  week.year,
+                  week.month,
+                  week.day + selected.weekday - 1,
+                );
+                month = DateTime(selected.year, selected.month);
+              } else {
+                month = DateTime(month.year, month.month + delta);
+              }
+            }),
+          ),
+        );
+        Widget calendarAndMemo(bool weekly) => Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _section(
-              '캘린더',
-              key: const Key('board-calendar'),
-              child: CompactCalendar(
-                key: Key(weekly ? 'calendar-week' : 'calendar-month'),
-                weekly: weekly,
-                dense: dense,
-                onExpand: weekly ? () => openMonth(context) : null,
-                weekStart: week,
-                month: month,
-                selected: selected,
-                hasEvents: (date) =>
-                    store.display.events && store.eventsOn(date).isNotEmpty,
-                onSelect: (date) {
-                  final repeated = tappedDay == dayKey(date);
-                  setState(() {
-                    selected = date;
-                    month = DateTime(date.year, date.month);
-                    tappedDay = dayKey(date);
-                    week = DateTime(
-                      date.year,
-                      date.month,
-                      date.day - date.weekday + 1,
-                    );
-                  });
-                  if (repeated &&
-                      (!widget.locked || store.display.lockCreateEvent)) {
-                    tappedDay = null;
-                    editEventDialog(context, store, initialDate: date);
-                  }
-                },
-                onMonth: (delta) => setState(() {
-                  tappedDay = null;
-                  if (weekly) {
-                    week = DateTime(
-                      week.year,
-                      week.month,
-                      week.day + delta * 7,
-                    );
-                    selected = DateTime(
-                      week.year,
-                      week.month,
-                      week.day + selected.weekday - 1,
-                    );
-                    month = DateTime(selected.year, selected.month);
-                  } else {
-                    month = DateTime(month.year, month.month + delta);
-                  }
-                }),
-              ),
-            ),
+            calendar(weekly),
             if (store.display.events || store.display.notes)
               _section(
                 '${formatDate(selected)} · 메모',
@@ -105,9 +101,7 @@ class _PlannerBoardState extends State<PlannerBoard> {
                 child: hidden
                     ? const Text('일정과 메모를 숨겼습니다.')
                     : ConstrainedBox(
-                        constraints: BoxConstraints(
-                          maxHeight: dense ? 48 : 116,
-                        ),
+                        constraints: BoxConstraints(maxHeight: 116),
                         child: SingleChildScrollView(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -143,16 +137,12 @@ class _PlannerBoardState extends State<PlannerBoard> {
           padding: EdgeInsets.zero,
           child: PagedBoard(
             onClose: widget.onClose,
-            keepWithNext: store.display.tasks
-                ? {'calendar-memo': 'tasks'}
-                : const {},
-            denseSections: {
-              'calendar-memo': calendarAndMemo(false, dense: true),
-            },
+            compactTriggers: {'calendar-memo': calendar(false)},
             compactSections: {
-              'calendar-memo': calendarAndMemo(true, dense: true),
+              if (store.display.events || store.display.notes)
+                'calendar-memo': calendarAndMemo(true),
             },
-            sections: {
+            sections: orderedSections({
               if (store.display.bible)
                 'bible': VerseCard(key: const Key('board-bible'), store: store),
               'calendar-memo': calendarAndMemo(false),
@@ -231,12 +221,20 @@ class _PlannerBoardState extends State<PlannerBoard> {
                       ],
                     ),
                   ),
-            },
+            }),
           ),
         );
       },
     );
   }
+
+  Map<String, Widget> orderedSections(Map<String, Widget> sections) => {
+    for (final group in widget.store.display.sectionOrder)
+      for (final entry in sections.entries)
+        if (entry.key == group ||
+            (group == 'goals' && entry.key.startsWith('goal-')))
+          entry.key: entry.value,
+  };
 
   Future<void> openMonth(BuildContext context) async {
     var displayed = DateTime(selected.year, selected.month);
